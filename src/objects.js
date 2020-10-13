@@ -2985,12 +2985,7 @@ SpriteMorph.prototype.freshPalette = function (category) {
 
         stage.globalBlocks.forEach(definition => {
             var block;
-            if (definition.category === category ||
-                    (category === 'variables'
-                        && contains(
-                            ['lists', 'other'],
-                            definition.category
-                        ))) {
+            if (definition.category === category) {
                 block = definition.templateInstance();
                 y += unit * 0.3;
                 block.setPosition(new Point(x, y));
@@ -3006,12 +3001,7 @@ SpriteMorph.prototype.freshPalette = function (category) {
     y += unit * 1.6;
     this.customBlocks.forEach(definition => {
         var block;
-        if (definition.category === category ||
-                (category === 'variables'
-                    && contains(
-                        ['lists', 'other'],
-                        definition.category
-                    ))) {
+        if (definition.category === category) {
             block = definition.templateInstance();
             y += unit * 0.3;
             block.setPosition(new Point(x, y));
@@ -3027,12 +3017,7 @@ SpriteMorph.prototype.freshPalette = function (category) {
     if (this.exemplar) {
         this.inheritedBlocks(true).forEach(definition => {
             var block;
-            if (definition.category === category ||
-                    (category === 'variables'
-                        && contains(
-                            ['lists', 'other'],
-                            definition.category
-                        ))) {
+            if (definition.category === category) {
                 block = definition.templateInstance();
                 y += unit * 0.3;
                 block.setPosition(new Point(x, y));
