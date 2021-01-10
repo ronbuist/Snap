@@ -185,7 +185,7 @@ SnapTranslator.dict.ru = {
     'translator_e-mail':
         'svetlanap@berkeley.edu, tema@school830.ru, pbsite@mail.ru', // optional
     'last_changed':
-        '2020-10-08', // this, too, will appear in the Translators tab
+        '2020-12-22', // this, too, will appear in the Translators tab
 
     // GUI
     // control bar:
@@ -402,23 +402,23 @@ SnapTranslator.dict.ru = {
     'play sound %snd':
         'воспроизводить звук %snd',
     'play sound %snd until done':
-        'воспроизв. звук %snd до конца',
+        'воспроизвести звук %snd до конца',
     'stop all sounds':
         'остановить все звуки',
     'rest for %n beats':
         'пауза в тактах %n',
-//    'play sound %snd at %rate Hz':
-//        'play sound %snd at %rate Hz', //Перевести
-//    '%aa of sound %snd':
-//        '%aa of sound %snd', //Перевести
-//    'duration':
-//        'duration', //Перевести
-//    'length':
-//        'length', //Перевести
-//    'number of channels':
-//        'number of channels', //Перевести
-//    'new sound %l rate %rate Hz':
-//        'new sound %l rate %rate Hz', //Перевести
+    'play sound %snd at %rate Hz':
+        'воспроизвести %snd с част. дискр. %rate Гц',
+    '%aa of sound %snd':
+        '%aa звука %snd',
+    'duration':
+        'длительность',
+    'length':
+        'длина',
+    'number of channels':
+        'число каналов',
+    'new sound %l rate %rate Hz':
+        'новый звук из %l с част. дискр. %rate Гц',
     'play note %note for %n beats':
         'играть ноту %note длит. %n',
     'set instrument to %inst':
@@ -426,23 +426,23 @@ SnapTranslator.dict.ru = {
     'change tempo by %n':
         'изменить темп на %n',
     'set tempo to %n bpm':
-        'уст. темп %n такт/мин',
+        'установить темп %n такт/мин',
     'tempo':
         'темп',
-//    'change volume by %n':
-//        'change volume by %n', //Перевести
-//    'set volume to %n %':
-//        'set volume to %n %', //Перевести
-//    'change balance by %n':
-//        'change balance by %n', //Перевести
-//    'set balance to %n':
-//        'set balance to %n', //Перевести
-//    'balance':
-//        'balance', //Перевести
-//    'play frequency %n Hz':
-//        'play frequency %n Hz', //Перевести
-//    'stop frequency':
-//        'stop frequency', //Перевести
+    'change volume by %n':
+        'изменить громкость на %n',
+    'set volume to %n %':
+        'установить громкость %n %',
+    'change balance by %n':
+        'изменить баланс на %n',
+    'set balance to %n':
+        'установить баланс %n',
+    'balance':
+        'баланс',
+    'play frequency %n Hz':
+        'воспроизводить частоту %n Гц',
+    'stop frequency':
+        'остановить частоту',
 //    'play %n Hz for %n secs':
 //        'play %n Hz for %n secs', //Перевести
 
@@ -469,16 +469,16 @@ SnapTranslator.dict.ru = {
         'установить цвет пера %clr',
     'set background color to %clr':
         'установить фоновый цвет %clr',
-//     'change pen %hsva by %n':
-//        'change pen %hsva by %n', //Перевести
-//    'change background %hsva by %n':
-//        'change background %hsva by %n', //Перевести
-//    'set pen %hsva to %n':
-//        'set pen %hsva to %n', //Перевести
-//    'set background %hsva to %n':
-//        'set background %hsva to %n', //Перевести
-//    'pen %pen':
-//        'pen %pen', //Перевести
+     'change pen %hsva by %n':
+        'изменить %hsva пера на %n',
+    'change background %hsva by %n':
+        'изменить %hsva фона на %n',
+    'set pen %hsva to %n':
+        'установить %hsva пера %n',
+    'set background %hsva to %n':
+        'установить %hsva фона %n',
+    'pen %pen':
+        '%pen пера',
     'change pen size by %n':
         'изменить размер пера на %n',
     'set pen size to %n':
@@ -487,12 +487,14 @@ SnapTranslator.dict.ru = {
         'оттиск',
     'fill':
         'заливка',
-//    'write %s size %n':
-//        'write %s size %n', //Перевести
-//    'paste on %spr':
-//        'paste on %spr', //Перевести
-//    'pen vectors':
-//        'pen vectors', //Перевести
+    'write %s size %n':
+        'написать %s шрифтом размера %n',
+    'paste on %spr':
+        'отпечатать на %spr',
+    'cut from %spr':
+        'вырезать из %spr',
+    'pen vectors':
+        'линии пера (вект.)',
 
     // control:
     'when %greenflag clicked':
@@ -511,22 +513,22 @@ SnapTranslator.dict.ru = {
         'заденет курсор',
     'mouse-departed':
         'покинет курсор',
-//    'scrolled-down':
-//    	'scrolled-down', //Перевести
-//    'scrolled-up':
-//        'scrolled-up', //Перевести
-//    'stopped':
-//        'stopped', //Перевести
+    'scrolled-down':
+    	'прокрутят вниз',
+    'scrolled-up':
+        'прокрутят вверх',
+    'stopped':
+        'остановят',
     'when %b':
         'когда %b',
     'when I receive %msgHat':
         'когда я получу %msgHat',
     'broadcast %msg':
-        'переслать %msg всем',
+        'разослать %msg всем',
     'broadcast %msg and wait':
-        'переслать %msg всем и ждать',
-//    'send %msg to %spr':
-//        'send %msg to %spr', //Перевести
+        'разослать %msg всем и ждать',
+    'send %msg to %spr':
+        'отправить %msg адресату %spr',
     'Message name':
         'Название сообщения',
     'message':
@@ -543,14 +545,14 @@ SnapTranslator.dict.ru = {
         'повторять %n %loop',
     'repeat until %b %loop':
         'повторять пока не %b %loop',
-//    'for %upvar = %n to %n %cla':
-//        'for %upvar = %n to %n %cla', //Перевести
+    'for %upvar = %n to %n %cla':
+        'для %upvar от %n до %n %cla',
     'if %b %c':
         'если %b %c',
     'if %b %c else %c':
         'если %b %c иначе %c',
-//    'if %b then %s else %s':
-//        'if %b then %s else %s', //Перевести
+    'if %b then %s else %s':
+        'если %b то %s иначе %s',
     'report %s':
         'результат %s',
     'stop %stopChoices':
@@ -618,15 +620,17 @@ SnapTranslator.dict.ru = {
     'key %key pressed?':
         'клавиша %key нажата?',
     '%rel to %dst':
-        '%rel на/до %dst',
+        '%rel до %dst',
     'distance':
     	'расстояние',
-//    '%asp at %loc':
-//        '%asp at %loc', //Перевести
-//    'r-g-b-a':
-//        'r-g-b-a', //Перевести
-//    'sprites':
-//        'sprites', //Перевести
+    'ray length':
+        'длина луча',
+    '%asp at %loc':
+        'получить %asp в точке %loc',
+    'r-g-b-a':
+        'цвет (r-g-b-a)',
+    'sprites':
+        'спрайты',
     'reset timer':
         'переустановить таймер',
     'timer':
@@ -635,18 +639,18 @@ SnapTranslator.dict.ru = {
         '%att у %spr',
     'my %get':
         'атрибут %get',
-//    'object %self':
-//        'object %self', //Перевести
+    'object %self':
+        'объект %self',
 //    'http:// %s':
 //        'http:// %s', //Перевести
-//    'turbo mode':
-//        'Turbomodus', //Перевести
-//    'flat line ends':
-//        'flache Pinselstriche', //Перевести
-//    'is %setting on?':
-//        'ist %setting an?', //Перевести
-//    'set %setting to %b':
-//        'setze %setting auf %b', //Перевести
+    'turbo mode':
+        'режим Турбо',
+    'flat line ends':
+        'прямоугольные завершения линий',
+    'is %setting on?':
+        '%setting включено?',
+    'set %setting to %b':
+        'установить %setting знач. %b',
     'current %dates':
         'сейчас %dates',
     'year':
@@ -665,32 +669,32 @@ SnapTranslator.dict.ru = {
         'секунд',
     'time in milliseconds':
         'время в миллисекундах',
-//    'microphone %audio':
-//        'Mikrofon %audio', //Перевести
-//    'volume':
-//        'Lautstärke', //Перевести
-//    'note':
-//        'Note', //Перевести
-//    'frequency':
-//        'Frequenz', //Перевести
-//    'samples':
-//        'Signale', //Перевести
-//    'sample rate':
-//        'Abtastrate', //Перевести
-//    'spectrum':
-//        'Frequenzspektrum', //Перевести
-//    'resolution':
-//        'Auflösung', //Перевести
-//    'Microphone resolution...':
-//        'Mikrofonauflösung...', //Перевести
-//    'Microphone':
-//        'Mikrofon', //Перевести
-//    'low':
-//        'niedrig', //Перевести
-//    'high':
-//        'hoch', //Перевести
-//    'max':
-//        'max', //Перевести
+    'microphone %audio':
+        '%audio микрофона',
+    'volume':
+        'громкость',
+    'note':
+        'нота',
+    'frequency':
+        'частота',
+    'samples':
+        'сигнал',
+    'sample rate':
+        'частота дискретизации',
+    'spectrum':
+        'частотный спектр',
+    'resolution':
+        'разрешение',
+    'Microphone resolution...':
+        'Разрешение микрофона...',
+    'Microphone':
+        'Микрофон',
+    'low':
+        'низкое',
+    'high':
+        'высокое',
+    'max':
+        'максимальное',
 //    'video %vid on %self':
 //        'Video %vid auf %self', //Перевести
 //    'motion':
@@ -709,16 +713,16 @@ SnapTranslator.dict.ru = {
         'размер стека',
     'frames':
         'рамки',
-//    'log pen vectors':
-//        'Vektoraufzeichnung', //Перевести
+    'log pen vectors':
+        'сохранять линии пера в вект. виде',
 
     // operators:
     '%n mod %n':
         '%n по модулю %n',
     'round %n':
         'округлить %n',
-//    '%fun of %n':
-//        '%fun %n', //Перевести
+    '%fun of %n':
+        '%fun %n',
     'pick random %n to %n':
         'случайное число от %n до %n',
     '%b and %b':
@@ -800,17 +804,17 @@ SnapTranslator.dict.ru = {
     'thing':
         'что-либо',
     'is %l empty?':
-        'список %l пуст?',
-//    'index of %s in %l':
-//        'Index von %s in %l', //Перевести
-//    'map %repRing over %l':
-//        'wende %repRing an auf %l', //Перевести
-//    'keep items %predRing from %l':
-//        'behalte Elemente, die %predRing aus %l', //Перевести
-//    'find first item %predRing in %l':
-//        'finde das erste Element, das %predRing in %l', //Перевести
-//    'combine %l using %repRing':
-//        'kombiniere die Elemente von %l mit %repRing', //Перевести
+        '%l пуст?',
+    'index of %s in %l':
+        'номер элемента %s в %l',
+    'map %repRing over %l':
+        'применить %repRing ко всему %l',
+    'keep items %predRing from %l':
+        'все подходящие под %predRing из %l',
+    'find first item %predRing in %l':
+        'первый подходящий под %predRing из %l',
+    'combine %l using %repRing':
+        'скомбинировать элементы %l с помощью %repRing',
 //    '%blitz map %repRing over %l':
 //        '%blitz wende %repRing an auf %l', //Перевести
 //    '%blitz keep items %predRing from %l':
@@ -819,22 +823,22 @@ SnapTranslator.dict.ru = {
 //        '%blitz finde das erste Element, das %predRing in %l', //Перевести
 //    '%blitz combine %l using %repRing':
 //        '%blitz kombiniere die Elemente von %l mit %repRing', //Перевести
-//    'for each %upvar in %l %cla':
-//        'für jedes %upvar von %l %cla', //Перевести
-//    'item':
-//        'Element', //Перевести
-//    'value':
-//        'Wert', //Перевести
-//    'index':
-//        'Index', //Перевести
-//    'append %lists':
-//        'verbinde %lists', //Перевести
+    'for each %upvar in %l %cla':
+        'для каждого %upvar из %l %cla',
+    'item':
+        'элемент',
+    'value':
+        'значение',
+    'index':
+        'номер',
+    'append %lists':
+        'объединить %lists',
     'add %s to %l':
         'добавить %s к %l',
     'delete %ida of %l':
         'удалить %ida из %l',
     'insert %s at %idx of %l':
-        'встав. %s в полож. %idx в %l',
+        'встав. %s в позицию %idx в %l',
     'replace item %idx of %l with %s':
         'заменить элем. %idx в %l на %s',
 
@@ -870,11 +874,11 @@ SnapTranslator.dict.ru = {
         'Открыть...',
     'Save':
         'Сохранить',
-//    'Save to disk':
-//        'Abpeichern', //Перевести
-//    'store this project\nin the downloads folder\n(in supporting browsers)':
-//        'dieses Projekt herunterladen\nund lokal speichern\n' //Перевести
-//            + '(nicht von allen Browsern unters\u00fctzt)', //Перевести
+    'Save to disk':
+        'Сохранить на диск',
+    'store this project\nin the downloads folder\n(in supporting browsers)':
+        'Сохранить этот проект в папке Загрузки\n(в поддерживаемых браузерах)',
+
     'Save As...':
         'Сохранить как...',
     'Import...':
@@ -933,10 +937,10 @@ SnapTranslator.dict.ru = {
     //Libraries
     'Import library':
         'Загрузка библиотек',
-//    'Loading':
-//        'Lädt', //Перевести
-//    'Imported':
-//        'Importiert', //Перевести
+    'Loading':
+        'Загрузка',
+    'Imported':
+        'Импортировано',
 //    'Iteration, composition':
 //        'Iteration, Komposition', //Перевести
 //    'List utilities':
@@ -969,18 +973,18 @@ SnapTranslator.dict.ru = {
 //        'Variablen im Skript erstellen', //Перевести
 
     // cloud menu
-//    'Login...':
-//        'Anmelden...', //Перевести
-//    'Signup...':
-//        'Benutzerkonto einrichten...', //Перевести
-//    'Logout':
-//        'Abmelden', //Перевести
-//    'Change Password...':
-//        'Passwort ändern...', //Перевести
-//    'Reset Password...':
-//        'Passwort zurücksetzen...', //Перевести
-//    'Resend Verification Email...':
-//        'Bestätigungsmail nochmal senden...', //Перевести
+    'Login...':
+        'Войти в аккаунт...',
+    'Signup...':
+        'Зарегистрироваться...',
+    'Logout':
+        'Выйти из аккаунта',
+    'Change Password...':
+        'Изменить пароль...',
+    'Reset Password...':
+        'Сбросить пароль...',
+    'Resend Verification Email...':
+        'Выслать ещё раз письмо для подтверждения e-mail...',
 //    'Open in Community Site':
 //        'Projektseite anzeigen', //Перевести
 
@@ -988,9 +992,9 @@ SnapTranslator.dict.ru = {
     'Language...':
         'Язык...',
     'Zoom blocks...':
-        'Увеличение блоков кода...',
-//    'Fade blocks...':
-//        'Bl\u00f6cke ausblenden...', //Перевести
+        'Масштаб блоков кода...',
+    'Fade blocks...':
+        'Обесцвечивание блоков...',
     'Stage size...':
         'Размер сцены...',
     'Stage size':
@@ -1102,9 +1106,9 @@ SnapTranslator.dict.ru = {
     'Thread safe scripts':
         'Защищенность скрипта в многопоточном режиме',
     'uncheck to allow\nscript reentrance':
-        'снимите флажок, чтобы разрешить\nповторный вход в скрипт',
+        'снимите флажок, чтобы включить\nперезапуск скрипта до его завершения',
     'check to disallow\nscript reentrance':
-        'отметьте, чтобы отключить\nповторный вход в скрипт',
+        'отметьте, чтобы отключить перезапуск\nскрипта до его завершения',
 //    'Prefer smooth animations':
 //        'Fixe Framerate', //Перевести
 //    'uncheck for greater speed\nat variable frame rates':
@@ -1121,18 +1125,18 @@ SnapTranslator.dict.ru = {
 //        'Ternäre Bool\'sche Inputs', //Перевести
     'Inheritance support':
         'Поддержка наследования',
-//    'Hyper blocks support':
-//        'Hyper-Blöcke', //Перевести
-//    'uncheck to disable\nusing operators on lists and tables':
-//         'erweiterte Anwendung von Operatoren\nauf Listen und Tabellen', //Перевести
-//    'check to enable\nusing operators on lists and tables':
-//         'erweiterte Anwendung von Operatoren\nauf Listen und Tabellen', //Перевести
-//    'Log pen vectors':
-//        'Malstiftvektoren aufzeichnen', //Перевести
-//    'uncheck to turn off\nlogging pen vectors':
-//        'ausschalten, um Malstiftbewegungen\nnicht mehr aufzuzeichnen', //Перевести
-//    'check to turn on\nlogging pen vectors':
-//        'einschalten, um Malstiftbewegungen\nals Vektor aufzuzeichnen', //Перевести
+    'Hyper blocks support':
+        'Поддержка гиперблоков',
+    'uncheck to disable\nusing operators on lists and tables':
+         'отключите возможность применять стандартные\nоператоры к спискам и таблицам',
+    'check to enable\nusing operators on lists and tables':
+         'включите возможность применять стандартные\nоператоры к спискам и таблицам',
+    'Log pen vectors':
+        'Сохранять линии пера в векторном виде',
+    'uncheck to turn off\nlogging pen vectors':
+        'отключите чтобы линии пера сохранялись\nв растровом виде (как пикселы)',
+    'check to turn on\nlogging pen vectors':
+        'включите чтобы линии пера сохранялись\nв векторном виде (как объекты)',
 
 
     // inputs
@@ -1172,42 +1176,46 @@ SnapTranslator.dict.ru = {
         'скопировать\nи запомнить',
     'only duplicate this block':
         'продублировать только данный блок',
+    'extract':
+        'извлечь',
+    'only grab this block':
+        'захватить только этот блок',
     'delete':
         'удалить',
-//    'senders...':
-//        'Sender...', // Перевести
-//    'receivers...':
-//        'Empfänger...', // Перевести
+    'senders...':
+        'отправители...',
+    'receivers...':
+        'получатели...',
     'script pic...':
         'изображение скрипта...',
     'save a picture\nof this script':
         'сохранить изображение этого скрипта',
-//    'result pic...':
-//        'Ergebnisbild...', // Перевести
-//    'save a picture of both\nthis script and its result':
-//        'ein Bild dieses Skripts mit\nseinem Ergebnis speichern', // Перевести
+    'result pic...':
+        'изображение скрипта с результатом...',
+    'save a picture of both\nthis script and its result':
+        'сохранить изображение скрипта\nи результата его работы',
     'ringify':
         'обвести',
     'unringify':
         'убрать обводку',
-//    'transient':
-//        'nicht persistent', // Перевести
-//    'uncheck to save contents\nin the project':
-//        'ausschalten, um den Inhalt\nim Projekt zu speichern', // Перевести
-//    'check to prevent contents\nfrom being saved':
-//        'einschalten, um das Speichern des Inhalts\nim Projekt zu verhindern', // Перевести
+    'transient':
+        'оперативная',
+    'uncheck to save contents\nin the project':
+        'снимите флажок чтобы сохранять\nзначение переменной в проекте',
+    'check to prevent contents\nfrom being saved':
+        'отметьте чтобы не сохранять\nзначение переменной в проекте',
 //    'new line':
 //        'neue Zeile', // Перевести
 
     // custom blocks:
     'delete block definition...':
-        'удалить определение блока',
-//    'duplicate block definition...':
-//        'Blockdefinition duplizieren...', // Перевести
-//    'export block definition...':
-//        'Blockdefinition exportieren...', // Перевести
-//    'including dependencies':
-//        'mit allen verwendeten Blöcken', // Перевести
+        'удалить определение блока...',
+    'duplicate block definition...':
+        'дублировать определение блока...',
+    'export block definition...':
+        'экспорт определения блока...',
+    'including dependencies':
+        'включая блоки, вызываемые данным (зависимости)',
     'edit...':
         'редактировать...',
 
@@ -1222,20 +1230,20 @@ SnapTranslator.dict.ru = {
         'центр вращения',
     'edit the costume\'s\nrotation center':
         'указать центр вращения для костюма',
-//    'rotate':
-//    	'Drehen', // Перевести
-//    'stick to':
-//        'Befestigen an', // Перевести
-//    'detach from':
-//        'Abtrennen von', // Перевести
-//    'detach all parts':
-//        'Alle Teile abtrennen', // Перевести
+    'rotate':
+    	'повернуть',
+    'stick to':
+        'прикрепить к',
+    'detach from':
+        'открепить от',
+    'detach all parts':
+        'открепить все части',
     'export...':
         'экспорт...',
     'parent...':
         'родитель...',
-//    'current parent':
-//        'родитель спрайта', // Перевести
+    'current parent':
+        'родитель спрайта',
     'release':
         'освободить',
     'make temporary and\nhide in the sprite corral':
@@ -1248,22 +1256,22 @@ SnapTranslator.dict.ru = {
         'изображение...',
     'save a picture\nof the stage':
         'сохранить изображение текущей сцены',
-//    'svg...':
-//        'SVG exportieren...', // Перевести
-//    'export pen trails\nline segments as SVG':
-//        'Striche in Malspuren als\nVektorgraphik exportieren', // Перевести
-//    'there are currently no\nvectorizable pen trail segments':
-//        'momentan gibt es keine\nvektorisierbaren Malspuren', // Перевести
-//    'turn all pen trails and stamps\ninto a new background for the stage':
-//        'Hintergrund aus allen Malspuren und\nStempelabdrücken auf der Bühne erstellen', // Перевести
-//    'turn all pen trails and stamps\ninto a new costume for the\ncurrently selected sprite':
-//        'aus allen Malspuren und Stempelabdrücken ein\nKostüm für die momentan ausgewählte Figur erstellen', // Перевести
+    'svg...':
+        'экспорт в SVG...',
+    'export pen trails\nline segments as SVG':
+        'экспортировать линии пера\nв векторном формате (SVG)',
+    'there are currently no\nvectorizable pen trail segments':
+        'на данный момент линии пера\nв векторном виде отсутствуют',
+    'turn all pen trails and stamps\ninto a new background for the stage':
+        'превратить все линии пера и\nоттиски в новый фон сцены',
+    'turn all pen trails and stamps\ninto a new costume for the\ncurrently selected sprite':
+        'превратить все линии пера и оттиски в\nновый костюм для текущего спрайта',
 
     // scripting area
     'clean up':
         'упорядочить',
     'arrange scripts\nvertically':
-        'размещать скрипты\nвертикально',
+        'разместить скрипты\nвертикально',
     'add comment':
         'добавить комментарий',
     'undrop':
@@ -1287,7 +1295,9 @@ SnapTranslator.dict.ru = {
     'export':
         'экспорт',
     'rename costume':
-        'переименовать костюм',
+        'Переименовать костюм',
+    'rename background':
+        'Переименовать фон',
 
     // sounds
     'Play sound':
@@ -1312,10 +1322,10 @@ SnapTranslator.dict.ru = {
         'открыть в отдельном окне...',
     'blockify':
         'представить как блок',
-//    'reset columns':
-//        'Spaltenbreiten zur\u00fccksetzen', // Перевести
-//    'items':
-//        'Elemente', // Перевести
+    'reset columns':
+        'ширины по умолчанию',
+    'items':
+        'элементы',
 
     // dialogs    
     // buttons
@@ -1335,32 +1345,32 @@ SnapTranslator.dict.ru = {
         'Справка',
 
     // zoom blocks
-//    'Zoom blocks':
-//        'Bl\u00f6cke vergr\u00f6\u00dfern', // Перевести
-//    'build':
-//        'baue', // Перевести
-//    'your own':
-//        'eigene', // Перевести
-//    'blocks':
-//        'Bl\u00f6cke', // Перевести
-//    'normal (1x)':
-//        'normal (1x)', // Перевести
-//    'demo (1.2x)':
-//        'Demo (1.2x)', // Перевести
-//    'presentation (1.4x)':
-//        'Pr\u00e4sentation (1.4x)', // Перевести
-//    'big (2x)':
-//        'gro\u00df (2x)', // Перевести
-//    'huge (4x)':
-//        'riesig (4x)', // Перевести
-//    'giant (8x)':
-//        'gigantisch (8x)', // Перевести
-//    'monstrous (10x)':
-//        'ungeheuerlich (10x)', // Перевести
+    'Zoom blocks':
+        'Масштаб блоков кода',
+    'build':
+        'создавай',
+    'your own':
+        'собственные',
+    'blocks':
+        'блоки',
+    'normal (1x)':
+        'нормальный (1x)',
+    'demo (1.2x)':
+        'для демонстрации (1.2x)',
+    'presentation (1.4x)':
+        'для презентации (1.4x)',
+    'big (2x)':
+        'большой (2x)',
+    'huge (4x)':
+        'огромный (4x)',
+    'giant (8x)':
+        'гигантский (8x)',
+    'monstrous (10x)':
+        'исполинский (10x)',
 
     // fade blocks
-//    'Fade blocks':
-//        'Bl\u00f6cke ausblenden', // Перевести
+    'Fade blocks':
+        'Обесцвечивание блоков',
 //    'block-solid (0)':
 //        'normal (0)', // Перевести
 //    'medium (50)':
@@ -1395,34 +1405,34 @@ SnapTranslator.dict.ru = {
         'переименовать...',
     'Examples':
         'Примеры',
-//    'Share':
-//        'Teilen', // Перевести
-//    'Unshare':
-//        'Nicht mehr teilen', // Перевести
-//    'Publish':
-//        'Veröffentlichen', // Перевести
-//    'Unpublish':
-//        'Nicht mehr veröffentlichen', // Перевести
-//    'Updating\nproject list...':
-//        'Projektliste laden', // Перевести
-//    'Recover':
-//        'Wiederherstellen', // Перевести
-//    'Today':
-//        'Heute', // Перевести
-//    'Yesterday':
-//        'Gestern', // Перевести
+    'Share':
+        'Поделиться',
+    'Unshare':
+        'Не делиться',
+    'Publish':
+        'Опубликовать',
+    'Unpublish':
+        'Не публиковать',
+    'Updating\nproject list...':
+        'Обновление списка проектов...',
+    'Recover':
+        'Восстановить',
+    'Today':
+        'Сегодня',
+    'Yesterday':
+        'Вчера',
 
     // costume editor
     'Costume Editor':
         'Редактор костюмов',
-//    'Paint Editor':
-//        'Kostümeditor', // Перевести
+    'Paint Editor':
+        'Растровый редактор костюмов',
     'click or drag crosshairs to move the rotation center':
-        'щелкните на перекрестье переместить центр поворота',
+        'щелкните или перетащите перекрестье чтобы переместить центр вращения',
     'undo':
         'отменить',
     'Vector':
-        'векторный формат',
+        'в векторный формат',
     'Paintbrush tool\n(free draw)':
 	'Кисть (свободное рисование)',
     'Stroked Rectangle\n(shift: square)':
@@ -1447,43 +1457,43 @@ SnapTranslator.dict.ru = {
         'Размер кисти',
     'Constrain proportions of shapes?\n(you can also hold shift)':
         'Сохранять пропорции фигур (круг, квадрат)?\nТак же можно использовать Shift',
-    //'grow':
-    //    'größer',
-    //'shrink':
-    //    'kleiner',
-    //'flip ↔':
-    //    'drehen ↔',
-    //'flip ↕':
-    //    'drehen ↕',
+    'grow':
+        'увеличить',
+    'shrink':
+        'уменьшить',
+    'flip horizontal':
+        'отразить ↔',
+    'flip vertical':
+        'отразить ↕',
     
-//    'Vector Paint Editor':
-//        'Vektor-Editor', // Перевести
-//    'Rectangle\n(shift: square)':
-//        'Rechteck\n(Shift: Quadrat)', // Перевести
-//    'Ellipse\n(shift: circle)':
-//        'Ellipse\n(Shift: Kreis)', // Перевести
-//    'Selection tool':
-//        'Auswählen', // Перевести
-//    'Line tool\n(shift: constrain to 45º)':
-//        'Linie\n(Shift: Vielfache von 45°)', // Перевести
-//    'Closed brush\n(free draw)':
-//        'geschlossene, gefüllte Form\n(freies Zeichnen)', // Перевести
+    'Vector Paint Editor':
+        'Векторный редактор костюмов',
+    'Rectangle\n(shift: square)':
+        'Прямоугольник\n(shift: квадрат)',
+    'Ellipse\n(shift: circle)':
+        'Эллипс\n(shift: окружность)',
+    'Selection tool':
+        'Выделение',
+    'Line tool\n(shift: constrain to 45º)':
+        'Линия\n(shift: с шагом 45°)',
+    'Closed brush\n(free draw)':
+        'Произвольная замкнутая кривая',
 //    'Paint a shape\n(shift: secondary color)':
 //        'fülle einen Bereich mit der gewählten Farbe\n(Shift: Sekundärfarbe)', // Перевести
-//    'Pipette tool\n(pick a color from anywhere\nshift: secondary color)':
-//        'Pipette\nklicke irgendwo auf die gewünschte Farbe\n um sie aufzunehmen (Shift: Sekundärfarbe)', // Перевести
-//    'Edge color\n(left click)':
-//        'Randfarbe\n(Linksklick)', // Перевести
-//    'Fill color\n(right click)':
-//        'Füllfarbe\n(Rechtsklick)', // Перевести
-   // 'Top':
-   //     'oben',
-   // 'Bottom':
-   //     'unten',
-   // 'Up':
-   //     'nach oben',
-   // 'Down':
-   //     'nach unten',
+    'Pipette tool\n(pick a color from anywhere\nshift: fill color)':
+        'Пипетка\n(взять цвет кликом на любую точку, shift: цвет заливки):',
+    'Edge color\n(left click)':
+        'Цвет линии\n(левая кн. мыши)',
+    'Fill color\n(right click)':
+        'Цвет заливки\n(прав. кн. мыши)',
+    'Top':
+        'Наверх',
+    'Bottom':
+        'Вниз',
+    'Up':
+        'Выше',
+    'Down':
+        'Ниже',
 
 
     // project notes
@@ -1493,8 +1503,12 @@ SnapTranslator.dict.ru = {
     // new project
     'New Project':
         'Новый Проект',
+    'Unsaved Changes!':
+        'Несохранённые изменения!',
     'Replace the current project with a new one?':
         'Заменить данный проект на новый?',
+    'Backup failed.\nThis cannot be undone, proceed anyway?':
+        'Создание резервной копии не удалось.\nЭто не может быть отменено. Продолжить?',
 
     // save project
     'Save Project As...':
@@ -1521,12 +1535,12 @@ SnapTranslator.dict.ru = {
         'только для текущего спрайта',
 
     // variables refactoring
-//    'rename only\nthis reporter':
-//        'nur diesen Block\numbenennen', // Перевести
+    'rename only\nthis reporter':
+        'переименовать только\nсаму переменную',
     'rename all...':
-        'переименовать все...',
-//    'rename all blocks that\naccess this variable':
-//        'alle Blöcke umbenennen,\ndie diese Variable referenzieren', // Перевести
+        'переименовать везде...',
+    'rename all blocks that\naccess this variable':
+        'переименовать переменную\nвезде где она используется',
 
 
     // block dialog
@@ -1541,9 +1555,9 @@ SnapTranslator.dict.ru = {
 
     // block editor
     'Block Editor':
-        'Редактор Блоков',
-//    'Method Editor':
-//        'Methodeneditor', // Перевести
+        'Редактор блоков',
+    'Method Editor':
+        'Редактор методов',
     'Apply':
         'Применить',
 
@@ -1611,8 +1625,8 @@ SnapTranslator.dict.ru = {
         'Переводчики',
     'License':
         'Лицензия',
-//    'current module versions:':
-//        'Komponenten-Versionen', // Перевести
+    'current module versions:':
+        'Версии модулей:',
     'Contributors':
         'Участники',
     'Translations':
@@ -1631,10 +1645,10 @@ SnapTranslator.dict.ru = {
         'бегунок max...',
     'import...':
         'импорт...',
-//    'raw data...':
-//        'Rohdaten...', // Перевести
-//    'import without attempting to\nparse or format data':
-//        'Daten unformatiert\nimportieren', // Перевести
+    'raw data...':
+        '"сырые" данные...',
+    'import without attempting to\nparse or format data':
+        'импортировать данные из файла\nбез парсинга и форматирования',
     'Slider minimum value':
         'Бегунок - min значение',
     'Slider maximum value':
@@ -1647,10 +1661,10 @@ SnapTranslator.dict.ru = {
     // comments
     'add comment here...':
         'добавьте комментарий сюда...',
-//    'comment pic...':
-//        'Kommentarbild', // Перевести
-//    'save a picture\nof this comment':
-//        'ein Bild dieser\nAnmerkung speichern', // Перевести
+    'comment pic...':
+        'изображение комментария...',
+    'save a picture\nof this comment':
+        'сохранить изображение\nэтого комментария',
 
     // drow downs
     // directions
@@ -1662,20 +1676,20 @@ SnapTranslator.dict.ru = {
         '(0) вверх',
     '(180) down':
         '(180) вниз',
-//    'random':
-//    	'zufällig', // Перевести
-//     'random position':
-//     	'zufällige Position', // Перевести
+    'random':
+    	'случайное',
+     'random position':
+     	'случайную точку',
 
     // collision detection
     'mouse-pointer':
         'курсор мышки',
     'edge':
-        'край',
+        'края',
     'pen trails':
         'линии пера',
-//    'center':
-//        'Mitte', // Перевести
+    'center':
+        'центр',
 
     // costumes
     'Turtle':
@@ -1686,10 +1700,10 @@ SnapTranslator.dict.ru = {
         'Нарисовать новый костюм',
     'Import a new costume from your webcam':
         'Сделать костюм из фотографии вебкамерой',
-//    'Please make sure your web browser is up to date\nand your camera is properly configured. \n\nSome browsers also require you to access Snap!\nthrough HTTPS to use the camera.\n\nPlase replace the "http://" part of the address\nin your browser by "https://" and try again.':
-//        'Überprüfe, ob der Browser auf dem aktuellsten Stand \nund die Webcam korrekt konfiguriert ist.\n\nFür einige Browser muss Snap! mit HTTPS geöffnet\nwerden, um auf die Kamera zuzugreifen.\n\nErsetze dafür den "http://"-Teil in der Adresszeile mit"https://"', // Перевести
-//    'Camera':
-//        'Kamera', // Перевести
+    'Please make sure your web browser is up to date\nand your camera is properly configured. \n\nSome browsers also require you to access Snap!\nthrough HTTPS to use the camera.\n\nPlase replace the "http://" part of the address\nin your browser by "https://" and try again.':
+        'Пожалуйста, убедитесь, что ваш браузер обновлён\nдо последней версии, а камера корректно настроена.\n\nНекоторые браузеры для работы камеры могут\nтребовать подключения к Snap! по протоколу HTTPS.\n\nПожалуйста, замените в адресной строке\nсимволы "http://" на "https://" и попробуйте ещё раз.',
+    'Camera':
+        'Камера',
     
     // sounds
     'Record a new sound':
@@ -1699,8 +1713,8 @@ SnapTranslator.dict.ru = {
     // graphical effects
     'color':
         'цвет',
-//    'hue':
-//        'Farbton', // Перевести
+    'hue':
+        'тон',
     'fisheye':
         'рыбий глаз',
     'whirl':
@@ -1713,8 +1727,8 @@ SnapTranslator.dict.ru = {
         'насыщенность',
     'brightness':
         'яркость',
-//    'transparency':
-//        'Transparenz', // Перевести
+    'transparency':
+        'прозрачность',
     'ghost':
         'прозрачность',
     'negative':
@@ -1885,8 +1899,8 @@ SnapTranslator.dict.ru = {
         'любой',
         
     // attributes
-//    'my':
-//        'Attribut', // Перевести
+    'my':
+        'мой...',
     'neighbors':
         'соседи',
     'self':
@@ -1908,7 +1922,7 @@ SnapTranslator.dict.ru = {
     'other clones':
         'другие клоны',
     'dangling?':
-        'висячий?',
+        'подвешенный?',
     'draggable?':
         'движимый?',
     'rotation style':
@@ -1947,30 +1961,41 @@ SnapTranslator.dict.ru = {
         'нижняя граница',
 
     // attributes in the SET block's dropdown
-//    'my anchor':
-//        'Attribut Verankerung', // Перевести
-//    'my parent':
-//        'Attribut Vorfahr', // Перевести
-//    'my name':
-//        'Attribut Name', // Перевести
-//    'my temporary?':
-//        'Attribut temporär?', // Перевести
-//    'my dangling?':
-//        'Attribut baumelnd?', // Перевести
-//    'my draggable?':
-//        'Attribut greifbar?', // Перевести
-//    'my rotation style':
-//        'Attribut Drehtyp', // Перевести
-//    'my rotation x':
-//        'Attribut Drehpunkt x', // Перевести
-//    'my rotation y':
-//        'Attribut Drehpunkt y', // Перевести
+    'my anchor':
+        'мой якорь',
+    'my parent':
+        'мой родитель',
+    'my name':
+        'моё имя',
+    'my temporary?':
+        'я временный?',
+    'my dangling?':
+        'я подвешенный?',
+    'my draggable?':
+        'я движимый?',
+    'my rotation style':
+        'мой тип вращения',
+    'my rotation x':
+        'мой центр вращения по x',
+    'my rotation y':
+        'мой центр вращения по y',
 
     // inheritance
-//    'inherited':
-//        'geerbt', // Перевести
-//    'check to inherit\nfrom':
-//        'einschalten, um zu erben\nvon', // Перевести
-//    'uncheck to\ndisinherit':
-//        'ausschalten, um \nnicht mehr zu erben' // Перевести
+    'inherited':
+        'наследовать',
+    'check to inherit\nfrom':
+        'отметьте чтобы унаследовать\nот',
+    'uncheck to\ndisinherit':
+        'снимите флажок чтобы\nне наследовать',
+
+    'tip':
+        'кончик',
+    'middle':
+        'центр',
+    'pen':
+        'перо',
+    'Camera not supported':
+        'Ошибка подключения к камере',
+    'Bitmap':
+        'в растровый формат',
 };
