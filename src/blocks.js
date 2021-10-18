@@ -9,7 +9,7 @@
     written by Jens Mönig
     jens@moenig.org
 
-    Copyright (C) 2020 by Jens Mönig
+    Copyright (C) 2021 by Jens Mönig
 
     This file is part of Snap!.
 
@@ -146,19 +146,21 @@
 
 /*global Array, BoxMorph,
 Color, ColorPaletteMorph, FrameMorph, Function, HandleMorph, Math, MenuMorph,
-Morph, MorphicPreferences, Object, Point, ScrollFrameMorph, ShadowMorph, ZERO,
-String, StringMorph, TextMorph, contains, degrees, detect, PianoMenuMorph,
-document, getDocumentPositionOf, isNaN, isString, newCanvas, nop, parseFloat,
-radians, useBlurredShadows, SpeechBubbleMorph, modules, StageMorph, Sound,
+Morph, MorphicPreferences, Object, ScrollFrameMorph, ShadowMorph, ZERO, Sound,
+String, StringMorph, TextMorph, contains, degrees, detect, PianoMenuMorph, nop,
+document, getDocumentPositionOf, isNaN, isString, newCanvas, parseFloat, isNil,
+radians, useBlurredShadows, SpeechBubbleMorph, modules, StageMorph, SymbolMorph,
 fontHeight, TableFrameMorph, SpriteMorph, Context, ListWatcherMorph, Rectangle,
 DialogBoxMorph, BlockInputFragmentMorph, PrototypeHatBlockMorph, WHITE, BLACK,
-Costume, IDE_Morph, BlockDialogMorph, BlockEditorMorph, localize, isNil, CLEAR,
+Costume, IDE_Morph, BlockDialogMorph, BlockEditorMorph, localize, CLEAR, Point,
 isSnapObject, PushButtonMorph, SpriteIconMorph, Process, AlignmentMorph,
-CustomCommandBlockMorph, SymbolMorph, ToggleButtonMorph, DialMorph*/
+CustomCommandBlockMorph, ToggleButtonMorph, DialMorph, SnapExtensions*/
+
+/*jshint esversion: 6*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2020-December-22';
+modules.blocks = '2021-October-14';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -352,6 +354,11 @@ SyntaxElementMorph.prototype.labelParts = {
             '(4) triangle' : 4
         }
     },
+    '%prim': {
+        type: 'input',
+        tags: 'read-only static',
+        menu: 'primitivesMenu'
+    },
     '%audio': {
         type: 'input',
         tags: 'read-only static',
@@ -461,6 +468,32 @@ SyntaxElementMorph.prototype.labelParts = {
             any : ['any']
         }
     },
+    '%la': {
+        type: 'input',
+        tags: 'read-only static',
+        menu: {
+            'length' : ['length'],
+            // 'size' : ['size'],
+            'rank' : ['rank'],
+            'dimensions' : ['dimensions'],
+            'flatten' : ['flatten'],
+            'columns' : ['columns'],
+            // 'transpose' : ['transpose'],
+            'reverse' : ['reverse'],
+            '~' : null,
+            'lines' : ['lines'],
+            'csv' : ['csv'],
+            'json' : ['json']
+        }
+    },
+    '%mlfunc': {
+        type: 'input',
+        tags: 'read-only static',
+        menu: {
+            'append' : ['append'],
+            'cross product' : ['cross product']
+        }
+    },
     '%dim': {
         type: 'input',
         tags: 'numeric',
@@ -557,7 +590,7 @@ SyntaxElementMorph.prototype.labelParts = {
     },
     '%msgHat': {
         type: 'input',
-        tags: 'read-only',
+        tags: 'read-only static',
         menu: 'messagesReceivedMenu'
     },
     '%att': {
@@ -721,6 +754,11 @@ SyntaxElementMorph.prototype.labelParts = {
             'variables' : ['variables'],
             'parameters' : ['parameters']
         }
+    },
+    '%scn': {
+        type: 'input',
+        tags: 'read-only',
+        menu: 'scenesMenu'
     },
 
     // video
@@ -895,7 +933,7 @@ SyntaxElementMorph.prototype.labelParts = {
         type: 'ring slot'
         tags: 'static',
         kind: 'command', 'reporter', 'predicate'
-        
+
     */
     '%rc': {
         type: 'ring slot',
@@ -945,6 +983,7 @@ SyntaxElementMorph.prototype.labelParts = {
         label: (optional)
         tags: 'widget' // doesn't count as "empty" slot implicit parameter
         min: (optional) number of minimum inputs) or zero
+        max: (optional) number of maximum inputs) or zero
         defaults: (optional) number of visible slots to begin with or zero
     */
     '%inputs': {
@@ -952,6 +991,13 @@ SyntaxElementMorph.prototype.labelParts = {
         slots: '%s',
         label: 'with inputs',
         tags: 'widget'
+    },
+    '%send': {
+        type: 'multi',
+        slots: '%s',
+        label: 'and send',
+        tags: 'static',
+        max: 1
     },
     '%scriptVars': {
         type: 'multi',
@@ -964,6 +1010,18 @@ SyntaxElementMorph.prototype.labelParts = {
         slots: '%t',
         label: 'block variables',
         tags: 'widget'
+    },
+    '%message': {
+        type: 'multi',
+        slots: '%t',
+        tags: 'widget',
+        max: 1
+    },
+    '%keyName': {
+        type: 'multi',
+        slots: '%t',
+        tags: 'widget',
+        max: 1
     },
     '%parms': {
         type: 'multi',
@@ -984,6 +1042,11 @@ SyntaxElementMorph.prototype.labelParts = {
     '%lists': {
         type: 'multi',
         slots: '%l',
+        defaults: 2
+    },
+    '%nums': {
+        type: 'multi',
+        slots: '%n',
         defaults: 2
     },
     '%exp': {
@@ -1211,11 +1274,15 @@ SyntaxElementMorph.prototype.revertToDefaultInput = function (arg, noValues) {
     // set default value
     if (!noValues) {
         if (inp !== -1) {
-            if (deflt instanceof MultiArgMorph) {
+            if (deflt instanceof MultiArgMorph && !inp) {
+                // first - and only - input is variadic
                 deflt.setContents(this.defaults);
                 deflt.defaults = this.defaults;
             } else if (!isNil(this.defaults[inp])) {
                 deflt.setContents(this.defaults[inp]);
+                if (deflt instanceof MultiArgMorph) {
+                    deflt.defaults = this.defaults[inp];
+                }
             }
         }
     }
@@ -1607,6 +1674,7 @@ SyntaxElementMorph.prototype.labelPart = function (spec) {
                 info.min || 0,
                 spec
             );
+            part.maxInputs = info.max;
             for (i = 0; i < info.defaults || 0; i += 1) {
                 part.addInput();
             }
@@ -1789,10 +1857,14 @@ SyntaxElementMorph.prototype.fixLayout = function () {
             } else {
                 lines.push([part]);
             }
-        } else if (part instanceof BlockHighlightMorph) {
-            nop(); // should be redundant now
-            // this.fullChanged();
-            // this.removeChild(part);
+        } else if (this.isVertical() && !(part instanceof FrameMorph)) {
+            // variadic ring-inputs are arranged vertically
+            // except the arrows for expanding and collapsing them
+            if (l.length > 0) {
+                lines.push(l);
+            }
+            l = [part];
+            x = part.fullBounds().width() + space;
         } else {
             if (part.isVisible) {
                 x += part.fullBounds().width() + space;
@@ -2008,7 +2080,7 @@ SyntaxElementMorph.prototype.fixLayout = function () {
             return;
         }
     }
-    
+
     this.fixHighlight();
 };
 
@@ -2024,6 +2096,11 @@ SyntaxElementMorph.prototype.methodIconExtent = function () {
     var ico = this.fontSize * 1.2;
     return this.hasLocationPin() ? new Point(ico * 0.66, ico)
     		: new Point(0, 0);
+};
+
+SyntaxElementMorph.prototype.isVertical = function () {
+    // control layout rule of variadic inputs, default is false
+    return false;
 };
 
 // SyntaxElementMorph evaluating:
@@ -2046,11 +2123,11 @@ SyntaxElementMorph.prototype.showBubble = function (value, exportPic, target) {
         img,
         morphToShow,
         isClickable = false,
-        ide = this.parentThatIsA(IDE_Morph),
+        ide = this.parentThatIsA(IDE_Morph) || target.parentThatIsA(IDE_Morph),
         anchor = this,
         pos = this.rightCenter().add(new Point(2, 0)),
         sf = this.parentThatIsA(ScrollFrameMorph),
-        wrrld = this.world();
+        wrrld = this.world() || target.world();
 
     if ((value === undefined) || !wrrld) {
         return null;
@@ -2411,6 +2488,7 @@ BlockSymbolMorph.prototype.getShadowRenderColor = function () {
     %r      - round reporter slot
     %p      - hexagonal predicate slot
     %vid    - chameleon colored rectangular drop-down for video modes
+    %scn    - chameleon colored rectangular drop-down for scene names
 
     rings:
 
@@ -2756,11 +2834,6 @@ BlockMorph.prototype.userMenu = function () {
                         'rename all blocks that\naccess this variable'
                     );
                 }
-            } else if (this.selector !== 'evaluateCustomBlock') {
-                menu.addItem(
-                    "hide",
-                    'hidePrimitive'
-                );
             }
 
             // allow toggling inheritable attributes
@@ -3012,8 +3085,8 @@ BlockMorph.prototype.userMenu = function () {
                 }
                 if (ide) {
                     ide.saveXMLAs(
-                        ide.serializer.serialize(this),
-                        this.selector + ' script',
+                        ide.serializer.serialize(top),
+                        top.selector + ' script',
                         false);
                 }
             },
@@ -3100,6 +3173,8 @@ BlockMorph.prototype.showMessageUsers = function () {
         message = '__shout__go__';
     } else if (this.selector === 'receiveOnClone') {
         message = '__clone__init__';
+    } else if (this.selector === 'receiveOnScene') {
+        message = '__scene__init__';
     } else if (inputs[0] instanceof InputSlotMorph) {
         message = inputs[0].evaluate();
     }
@@ -3180,25 +3255,6 @@ BlockMorph.prototype.developersMenu = function () {
         )
     );
     return menu;
-};
-
-BlockMorph.prototype.hidePrimitive = function () {
-    var ide = this.parentThatIsA(IDE_Morph),
-        dict,
-        cat;
-    if (!ide) {return; }
-    StageMorph.prototype.hiddenPrimitives[this.selector] = true;
-    dict = {
-        doWarp: 'control',
-        reifyScript: 'operators',
-        reifyReporter: 'operators',
-        reifyPredicate: 'operators',
-        doDeclareVariables: 'variables'
-    };
-    cat = dict[this.selector] || this.category;
-    if (cat === 'lists') {cat = 'variables'; }
-    ide.flushBlocksCache(cat);
-    ide.refreshPalette();
 };
 
 BlockMorph.prototype.isInheritedVariable = function (shadowedOnly) {
@@ -4197,7 +4253,7 @@ BlockMorph.prototype.render = function (ctx) {
         this.outlinePath(ctx, 0);
         ctx.closePath();
         ctx.fill();
-    
+
         // add 3D-Effect:
         this.drawEdges(ctx);
     }
@@ -4216,7 +4272,7 @@ BlockMorph.prototype.drawMethodIcon = function (ctx) {
         x = this.edge + this.labelPadding,
         y = this.edge,
         isNormal =
-            this.color === SpriteMorph.prototype.blockColor[this.category];
+            this.color === SpriteMorph.prototype.blockColorFor(this.category);
 
     if (this.isPredicate) {
         x = this.rounding;
@@ -4429,7 +4485,7 @@ BlockMorph.prototype.fixBlockColor = function (nearestBlock, isForced) {
         }
     }
     if (!nearest) { // top block
-        clr = SpriteMorph.prototype.blockColor[this.category];
+        clr = SpriteMorph.prototype.blockColorFor(this.category);
         if (!this.color.eq(clr)) {
             this.alternateBlockColor();
         }
@@ -4438,7 +4494,7 @@ BlockMorph.prototype.fixBlockColor = function (nearestBlock, isForced) {
             this.alternateBlockColor();
         }
     } else if (this.category && !this.color.eq(
-            SpriteMorph.prototype.blockColor[this.category]
+            SpriteMorph.prototype.blockColorFor(this.category)
         )) {
         this.alternateBlockColor();
     }
@@ -4448,7 +4504,7 @@ BlockMorph.prototype.fixBlockColor = function (nearestBlock, isForced) {
 };
 
 BlockMorph.prototype.forceNormalColoring = function () {
-    var clr = SpriteMorph.prototype.blockColor[this.category];
+    var clr = SpriteMorph.prototype.blockColorFor(this.category);
     this.setColor(clr);
     this.setLabelColor(
         WHITE,
@@ -4459,7 +4515,7 @@ BlockMorph.prototype.forceNormalColoring = function () {
 };
 
 BlockMorph.prototype.alternateBlockColor = function () {
-    var clr = SpriteMorph.prototype.blockColor[this.category];
+    var clr = SpriteMorph.prototype.blockColorFor(this.category);
 
     if (this.color.eq(clr)) {
         this.setColor(
@@ -4476,13 +4532,13 @@ BlockMorph.prototype.alternateBlockColor = function () {
 
 BlockMorph.prototype.ghost = function () {
     this.setColor(
-        SpriteMorph.prototype.blockColor[this.category].lighter(35)
+        SpriteMorph.prototype.blockColorFor(this.category).lighter(35)
     );
 };
 
 BlockMorph.prototype.fixLabelColor = function () {
     if (this.zebraContrast > 0 && this.category) {
-        var clr = SpriteMorph.prototype.blockColor[this.category];
+        var clr = SpriteMorph.prototype.blockColorFor(this.category);
         if (this.color.eq(clr)) {
             this.setLabelColor(
                 WHITE,
@@ -5143,7 +5199,8 @@ CommandBlockMorph.prototype.isStop = function () {
     return ([
         'doForever',
         'doReport',
-        'removeClone'
+        'removeClone',
+        'doSwitchToScene'
     ].indexOf(this.selector) > -1);
 };
 
@@ -5833,11 +5890,11 @@ function ReporterBlockMorph(isPredicate) {
 ReporterBlockMorph.prototype.init = function (isPredicate) {
     ReporterBlockMorph.uber.init.call(this);
     this.isPredicate = isPredicate || false;
- 
+
     this.bounds.setExtent(new Point(50, 22).multiplyBy(this.scale));
     this.fixLayout();
     this.rerender();
- 
+
     this.cachedSlotSpec = null; // don't serialize
     this.isLocalVarTemplate = null; // don't serialize
 };
@@ -6528,7 +6585,7 @@ RingMorph.prototype.render = function (ctx) {
         // ctx.closePath();
         ctx.clip('evenodd');
         ctx.fillRect(0, 0, this.width(), this.height());
-    
+
         // add 3D-Effect:
         this.drawEdges(ctx);
     }
@@ -8915,6 +8972,7 @@ InputSlotMorph.prototype.init = function (
     contents.isShowingBlanks = true;
 
 	this.selectedBlock = null;
+    this.symbol = null;
 
     this.isUnevaluated = false;
     this.choices = choiceDict || null; // object, function or selector
@@ -8966,10 +9024,20 @@ InputSlotMorph.prototype.setContents = function (data) {
 	if (this.selectedBlock) {
    		this.selectedBlock = null;
 	}
+	if (this.symbol) {
+        this.symbol.destroy();
+   		this.symbol = null;
+	}
 
     if (isConstant) {
-        dta = localize(dta[0]);
-        cnts.isItalic = !this.isReadOnly;
+        if (dta[0] === '__shout__go__') {
+            this.symbol = this.labelPart('%greenflag');
+            this.add(this.symbol);
+            dta = '';
+        } else {
+            dta = localize(dta[0]);
+            cnts.isItalic = !this.isReadOnly;
+        }
     } else if (dta instanceof BlockMorph) {
     	this.selectedBlock = dta;
       	dta = ''; // make sure the contents text emptied
@@ -9033,6 +9101,7 @@ InputSlotMorph.prototype.menuFromDict = function (
 {
     var key, dial, flag,
     	myself = this,
+        selector,
         block = this.parentThatIsA(BlockMorph),
         ide = this.parentThatIsA(IDE_Morph),
         menu = new MenuMorph(
@@ -9055,9 +9124,24 @@ InputSlotMorph.prototype.menuFromDict = function (
     }
 
     if (choices instanceof Function) {
+        if (!Process.prototype.enableJS) {
+            menu.addItem('JavaScript extensions for Snap!\nare turned off');
+            return menu;
+        }
         choices = choices.call(this);
     } else if (isString(choices)) {
-        choices = this[choices]();
+        if (choices.indexOf('ext_') === 0) {
+            selector = choices.slice(4);
+            choices = SnapExtensions.menus.get(selector);
+            if (choices) {
+                choices = choices.call(this);
+            } else {
+                menu.addItem('cannot find extension menu "' + selector + '"');
+                return menu;
+            }
+        } else {
+            choices = this[choices]();
+        }
         if (!choices) { // menu has already happened
             return;
         }
@@ -9161,6 +9245,7 @@ InputSlotMorph.prototype.keysMenu = function () {
         'down arrow': ['down arrow'],
         'right arrow': ['right arrow'],
         'left arrow': ['left arrow'],
+        enter: ['enter'],
         space : ['space'],
         '+' : ['+'],
         '-' : ['-'],
@@ -9219,9 +9304,7 @@ InputSlotMorph.prototype.messagesMenu = function (searching) {
     allNames.sort().forEach(name =>
         dict[name] = name
     );
-    if (this.world().currentKey === 16) { // shift
-        dict.__shout__go__ = ['__shout__go__'];
-    }
+    dict.__shout__go__ = ['__shout__go__'];
     if (allNames.length > 0) {
         dict['~'] = null;
     }
@@ -9271,6 +9354,16 @@ InputSlotMorph.prototype.messagesReceivedMenu = function (searching) {
             null,
             this.world()
         );
+    return dict;
+};
+
+InputSlotMorph.prototype.primitivesMenu = function () {
+    var dict = {},
+        allNames = Array.from(SnapExtensions.primitives.keys());
+
+    allNames.sort().forEach(name =>
+        dict[name] = name
+    );
     return dict;
 };
 
@@ -9684,13 +9777,35 @@ InputSlotMorph.prototype.audioMenu = function (searching) {
         'spectrum' : ['spectrum'],
         'resolution' : ['resolution']
     };
-    if (searching) {return {}; }
+    if (searching) {return dict; }
 
     if (this.world().currentKey === 16) { // shift
         dict['~'] = null;
         dict.modifier = ['modifier'];
         dict.output = ['output'];
     }
+    return dict;
+};
+
+InputSlotMorph.prototype.scenesMenu = function (searching) {
+    var dict = {},
+        scenes;
+    if (!searching) {
+        scenes = this.parentThatIsA(IDE_Morph).scenes;
+        if (scenes.length() > 1) {
+            scenes.itemsArray().forEach(scn => {
+                if (scn.name) {
+                    dict[scn.name] = scn.name;
+                }
+            });
+        }
+    }
+    dict['~'] = null;
+    dict.next = ['next'];
+    dict.previous = ['previous'];
+    dict['1 '] = 1; // trailing space needed to prevent undesired sorting
+    dict.last = ['last'];
+    dict.random = ['random'];
     return dict;
 };
 
@@ -9744,8 +9859,16 @@ InputSlotMorph.prototype.fixLayout = function () {
             + arrowWidth
             + this.edge * 2
             + this.typeInPadding * 2;
-     } else {
-    	height = contents.height() + this.edge * 2; // + this.typeInPadding * 2
+    } else if (this.symbol) {
+        this.symbol.fixLayout();
+        this.symbol.setPosition(this.position().add(this.edge * 2));
+        height = this.symbol.height() + this.edge * 4;
+        width = this.symbol.width()
+            + arrowWidth
+            + this.edge * 4
+            + this.typeInPadding * 2;
+    } else {
+        height = contents.height() + this.edge * 2; // + this.typeInPadding * 2
         if (this.isNumeric) {
             width = contents.width()
                 + Math.floor(arrowWidth * 0.5)
@@ -9927,6 +10050,12 @@ InputSlotMorph.prototype.evaluate = function () {
  	if (this.selectedBlock) {
   		return this.selectedBlock;
   	}
+    if (this.symbol) {
+        if (this.symbol.name === 'flag') {
+            return ['__shout__go__'];
+        }
+        return '';
+    }
     if (this.constant) {
         return this.constant;
     }
@@ -9941,7 +10070,7 @@ InputSlotMorph.prototype.evaluate = function () {
 };
 
 InputSlotMorph.prototype.isEmptySlot = function () {
-    return this.contents().text === '' && !this.selectedBlock;
+    return this.contents().text === '' && !this.selectedBlock && !this.symbol;
 };
 
 // InputSlotMorph single-stepping:
@@ -10033,7 +10162,6 @@ InputSlotMorph.prototype.render = function (ctx) {
             this.edge
         );
  	}
-
 };
 
 InputSlotMorph.prototype.drawRectBorder = function (ctx) {
@@ -10389,7 +10517,7 @@ TemplateSlotMorph.prototype.contents = function () {
 
 TemplateSlotMorph.prototype.setContents = function (aString) {
     var tmp = this.template();
-    tmp.setSpec(aString);
+    tmp.setSpec(aString instanceof Array? localize(aString[0]) : aString);
     tmp.fixBlockColor(); // fix zebra coloring
     tmp.fixLabelColor();
 };
@@ -10927,7 +11055,8 @@ BooleanSlotMorph.prototype.drawKnob = function (ctx, progress) {
     var w = this.width(),
         r = this.height() / 2,
         shift = this.edge / 2,
-        slideStep = (this.width() - this.height()) / 4 * Math.max(0, (progress || 0)),
+        slideStep = (this.width() - this.height()) / 4 *
+            Math.max(0, (progress || 0)),
         gradient,
         x,
         y = r,
@@ -11490,6 +11619,7 @@ MultiArgMorph.prototype.init = function (
     this.slotSpec = slotSpec || '%s';
     this.labelText = localize(labelTxt || '');
     this.minInputs = min || 0;
+    this.maxInputs = null;
     this.elementSpec = eSpec || null;
     this.labelColor = labelColor || null;
     this.shadowColor = shadowColor || null;
@@ -11639,6 +11769,8 @@ MultiArgMorph.prototype.fixArrowsLayout = function () {
         rightArrow = arrows.children[1],
         inpCount = this.inputs().length,
         dim = new Point(rightArrow.width() / 2, rightArrow.height());
+    leftArrow.show();
+    rightArrow.show();
     if (inpCount < (this.minInputs + 1)) { // hide left arrow
         if (label) {
             label.hide();
@@ -11659,6 +11791,11 @@ MultiArgMorph.prototype.fixArrowsLayout = function () {
         rightArrow.show();
         rightArrow.setPosition(leftArrow.topCenter());
         arrows.bounds.corner = rightArrow.bottomRight().copy();
+        if (!isNil(this.maxInputs) && inpCount > this.maxInputs - 1) {
+            // hide right arrow
+            rightArrow.hide();
+            arrows.setExtent(dim);
+        }
     }
     arrows.rerender();
 };
@@ -11717,6 +11854,10 @@ MultiArgMorph.prototype.addInput = function (contents) {
         } else {
             newPart.setContents('#' + idx);
         }
+    } else if (this.elementSpec === '%message') {
+        newPart.setContents(localize('message'));
+    } else if (this.elementSpec === '%keyName') {
+        newPart.setContents(localize('key'));
     }
     newPart.parent = this;
     this.children.splice(idx, 0, newPart);
@@ -11739,6 +11880,10 @@ MultiArgMorph.prototype.removeInput = function () {
         }
     }
     this.fixLayout();
+};
+
+MultiArgMorph.prototype.isVertical = function () {
+    return contains(['%repRing', '%predRing', '%cmdRing'], this.slotSpec);
 };
 
 MultiArgMorph.prototype.is3ArgRingInHOF = function () {
@@ -13104,9 +13249,13 @@ CommentMorph.prototype.mouseClickLeft = function () {
 
 CommentMorph.prototype.layoutChanged = function () {
     // react to a change of the contents area
+    var ide = this.parentThatIsA(IDE_Morph);
     this.fixLayout();
     this.align();
     this.comeToFront();
+    if (ide) {
+        ide.recordUnsavedChanges();
+    }
 };
 
 CommentMorph.prototype.fixLayout = function () {
@@ -13195,7 +13344,9 @@ CommentMorph.prototype.userMenu = function () {
     menu.addItem(
         "comment pic...",
         () => {
-            var ide = this.parentThatIsA(IDE_Morph);
+            var ide = this.parentThatIsA(IDE_Morph) ||
+                this.parentThatIsA(BlockEditorMorph)
+                    .target.parentThatIsA(IDE_Morph);
             ide.saveCanvasAs(
                 this.fullImage(),
                 (ide.projectName || localize('untitled')) + ' ' +
@@ -14189,7 +14340,7 @@ ScriptFocusMorph.prototype.reactToKeyEvent = function (key) {
 
     cmd = new CommandBlockMorph();
     cmd.setSpec('command %cmdRing');
-    
+
     rings = new CommandBlockMorph();
     rings.setSpec('reporter %repRing predicate %predRing');
 

@@ -46,9 +46,11 @@
 
 /*global modules, contains*/
 
-modules.locale = '2021-January-05';
+/*jshint esversion: 6*/
 
 // Global stuff
+
+modules.locale = '2021-October-04';
 
 var Localizer;
 var SnapTranslator = new Localizer();
@@ -168,7 +170,7 @@ SnapTranslator.dict.de = {
     'translator_e-mail':
         'jens@moenig.org, jadga.huegle@sap.com',
     'last_changed':
-        '2020-12-21'
+        '2021-10-04'
 };
 
 SnapTranslator.dict.it = {
@@ -241,11 +243,11 @@ SnapTranslator.dict.zh_CN = {
     'language_name':
         '简体中文',
     'language_translator':
-        '五百刀/邓江华/曹儒林',
+        '五百刀/邓江华/孟锡峰/曹儒林',
     'translator_e-mail':
-        'ubertao@qq.com/djh@rhjxx.cn',
+        'ubertao@qq.com/djh@rhjxx.cn/simon@snapontop.org',
     'last_changed':
-        '2020-07-03'
+        '2021-07-12'
 };
 
 SnapTranslator.dict.eo = {
@@ -318,11 +320,11 @@ SnapTranslator.dict.pl = {
     'language_name':
         'Polski',
     'language_translator':
-        'Witek Kranas & deKrain',
+        'Witek Kranas & deKrain & Andrzej Batorski',
     'translator_e-mail':
         'witek@oeiizk.waw.pl',
     'last_changed':
-        '2017-11-09'
+        '2021-05-15'
 };
 
 SnapTranslator.dict.zh_TW = {
@@ -377,7 +379,7 @@ SnapTranslator.dict.ca = {
     'translator_e-mail':
         'bernat@snap4arduino.rocks, jguille2@xtec.cat',
     'last_changed':
-        '2020-12-21'
+        '2021-03-14'
 };
 
 SnapTranslator.dict.ca_VA = {
@@ -465,7 +467,7 @@ SnapTranslator.dict.ta = {
     'translator_e-mail':
         'vnkmr7620@gmail.com',
     'last_changed':
-        '2020-12-09'
+        '2021-01-25'
 };
 
 SnapTranslator.dict.te = {
@@ -487,7 +489,7 @@ SnapTranslator.dict.tr = {
     'translator_e-mail':
         'tguneysu@msn.com', // hakanatas@gmail.com, mustafaipekbayrak@gmail.com',
     'last_changed':
-        '2020-09-20'
+        '2021-01-26'
 };
 
 SnapTranslator.dict.hu = {
@@ -631,4 +633,14 @@ SnapTranslator.dict.he = {
         'cohenyossi81@gmail.com',
     'last_changed':
         '2020-04-21'
+};
+SnapTranslator.dict.hi = {
+	'language_name':
+        'हिंदी',
+    'language_translator':
+        'Barthdry',
+    'translator_e-mail':
+        'barathkumarbasker2007@gmail.com',
+    'last_changed':
+        '2021-05-08'
 };

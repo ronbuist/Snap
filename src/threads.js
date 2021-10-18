@@ -59,9 +59,12 @@ degrees, detect, nop, radians, ReporterSlotMorph, CSlotMorph, RingMorph, Sound,
 IDE_Morph, ArgLabelMorph, localize, XML_Element, hex_sha512, TableDialogMorph,
 StageMorph, SpriteMorph, StagePrompterMorph, Note, modules, isString, copy, Map,
 isNil, WatcherMorph, List, ListWatcherMorph, alert, console, TableMorph, BLACK,
-TableFrameMorph, ColorSlotMorph, isSnapObject, newCanvas, Symbol, SVG_Costume*/
+TableFrameMorph, ColorSlotMorph, isSnapObject, newCanvas, Symbol, SVG_Costume,
+SnapExtensions, AlignmentMorph, TextMorph, Cloud*/
 
-modules.threads = '2021-January-05';
+/*jshint esversion: 6*/
+
+modules.threads = '2021-October-06';
 
 var ThreadManager;
 var Process;
@@ -562,7 +565,7 @@ Process.prototype.enableLiveCoding = false; // experimental
 Process.prototype.enableSingleStepping = false; // experimental
 Process.prototype.enableCompiling = false; // experimental
 Process.prototype.flashTime = 0; // experimental
-// Process.prototype.enableJS = false;
+Process.prototype.enableJS = false;
 
 function Process(topBlock, receiver, onComplete, yieldFirst) {
     this.topBlock = topBlock || null;
@@ -809,6 +812,23 @@ Process.prototype.evaluateBlock = function (block, argCount) {
             this.popContext();
         }
     }
+};
+
+// Process: Primitive Extensions (for libraries etc.)
+
+Process.prototype.doApplyExtension = function (prim, args) {
+    this.reportApplyExtension(prim, args);
+};
+
+Process.prototype.reportApplyExtension = function (prim, args) {
+    var ext = SnapExtensions.primitives.get(prim);
+    if (isNil(ext)) {
+        throw new Error('missing / unspecified extension: ' + prim);
+    }
+    return ext.apply(
+        this.blockReceiver(),
+        args.itemsArray().concat([this])
+    );
 };
 
 // Process: Special Forms Blocks Primitives
@@ -1105,24 +1125,77 @@ Process.prototype.expectReport = function () {
 
 // Process Exception Handling
 
-Process.prototype.handleError = function (error, element) {
-    var m = element;
+Process.prototype.throwError = function (error, element) {
+    var m = element,
+        ide = this.homeContext.receiver.parentThatIsA(IDE_Morph);
     this.stop();
     this.errorFlag = true;
     this.topBlock.addErrorHighlight();
-    if (isNil(m) || isNil(m.world())) {m = this.topBlock; }
-    m.showBubble(
-        (m === element ? '' : 'Inside: ')
-            + error.name
-            + '\n'
-            + error.message,
-        this.exportResult,
-        this.receiver
-    );
+    if (ide.isAppMode) {
+        ide.showMessage(error.name + '\n' + error.message);
+    } else {
+        if (isNil(m) || isNil(m.world())) {m = this.topBlock; }
+        m.showBubble(
+            this.errorBubble(error, element),
+            this.exportResult,
+            this.receiver
+        );
+    }
 };
+
+Process.prototype.tryCatch = function (action, exception, errVarName) {
+    var next = this.context.continuation();
+
+    this.handleError = function(error) {
+        this.resetErrorHandling();
+        if (exception.expression instanceof CommandBlockMorph) {
+            exception.expression = exception.expression.blockSequence();
+        }
+        exception.pc = 0;
+        exception.outerContext.variables.addVar(errVarName);
+        exception.outerContext.variables.setVar(errVarName, error.message);
+        this.context = exception;
+        this.evaluate(next, new List(), true);
+    };
+
+    this.evaluate(action, new List(), true);
+};
+
+Process.prototype.resetErrorHandling = function () {
+    this.handleError = this.throwError;
+};
+
+Process.prototype.resetErrorHandling();
 
 Process.prototype.errorObsolete = function () {
     throw new Error('a custom block definition is missing');
+};
+
+Process.prototype.errorBubble = function (error, element) {
+    // Return a morph containing an image of the elment causing the error
+    // above the text of error.
+    var errorMorph = new AlignmentMorph('column', 5),
+        errorIsNested = isNil(element.world()),
+        errorPrefix = errorIsNested ? `${localize('Inside a custom block')}:\n`
+            : '',
+        errorMessage = new TextMorph(
+            `${errorPrefix}${localize(error.name)}:\n${localize(error.message)}`,
+            SyntaxElementMorph.prototype.fontSize
+        ),
+        blockToShow = element;
+
+    errorMorph.add(errorMessage);
+    if (errorIsNested) {
+        if (blockToShow.selector === 'reportGetVar') {
+            // if I am a single variable, show my caller in the output.
+            blockToShow = blockToShow.parent;
+        }
+        errorMorph.text += `\n${localize('The error occured at:')}\n`;
+        errorMorph.add(blockToShow.fullCopy());
+        errorMorph.fixLayout();
+    }
+
+    return errorMorph;
 };
 
 // Process Lambda primitives
@@ -1185,6 +1258,9 @@ Process.prototype.reifyPredicate = function (topBlock, parameterNames) {
 };
 
 Process.prototype.reportJSFunction = function (parmNames, body) {
+    if (!this.enableJS) {
+        throw new Error('JavaScript extensions for Snap!\nare turned off');
+    }
     return Function.apply(
         null,
         parmNames.itemsArray().concat([body])
@@ -1204,9 +1280,6 @@ Process.prototype.evaluate = function (
         return this.returnValueToParentContext(null);
     }
     if (context instanceof Function) {
-        // if (!this.enableJS) {
-        //     throw new Error('JavaScript is not enabled');
-        // }
         return context.apply(
             this.blockReceiver(),
             args.itemsArray().concat([this])
@@ -1638,8 +1711,9 @@ Process.prototype.reportGetVar = function () {
     );
 };
 
-Process.prototype.doShowVar = function (varName) {
-    var varFrame = (this.context || this.homeContext).variables,
+Process.prototype.doShowVar = function (varName, context) {
+    // context is an optional start-context to be used by extensions
+    var varFrame = (context || (this.context || this.homeContext)).variables,
         stage,
         watcher,
         target,
@@ -1652,7 +1726,7 @@ Process.prototype.doShowVar = function (varName) {
         if (name.expression.selector === 'reportGetVar') {
             name = name.expression.blockSpec;
         } else {
-            this.doChangePrimitiveVisibility(name.expression, false);
+            this.blockReceiver().changeBlockVisibility(name.expression, false);
             return;
         }
     }
@@ -1701,9 +1775,10 @@ Process.prototype.doShowVar = function (varName) {
     }
 };
 
-Process.prototype.doHideVar = function (varName) {
+Process.prototype.doHideVar = function (varName, context) {
     // if no varName is specified delete all watchers on temporaries
-    var varFrame = this.context.variables,
+    // context is an optional start-context to be used by extensions
+    var varFrame = (context || this.context).variables,
         stage,
         watcher,
         target,
@@ -1713,7 +1788,7 @@ Process.prototype.doHideVar = function (varName) {
         if (name.expression.selector === 'reportGetVar') {
             name = name.expression.blockSpec;
         } else {
-            this.doChangePrimitiveVisibility(name.expression, true);
+            this.blockReceiver().changeBlockVisibility(name.expression, true);
             return;
         }
     }
@@ -1754,33 +1829,6 @@ Process.prototype.doRemoveTemporaries = function () {
             });
         }
     }
-};
-
-// Process hiding and showing primitives primitives :-)
-
-Process.prototype.doChangePrimitiveVisibility = function (aBlock, hideIt) {
-    var ide = this.homeContext.receiver.parentThatIsA(IDE_Morph),
-        dict,
-        cat;
-    if (!ide || (aBlock.selector === 'evaluateCustomBlock')) {
-        return;
-    }
-    if (hideIt) {
-        StageMorph.prototype.hiddenPrimitives[aBlock.selector] = true;
-    } else {
-        delete StageMorph.prototype.hiddenPrimitives[aBlock.selector];
-    }
-    dict = {
-        doWarp: 'control',
-        reifyScript: 'operators',
-        reifyReporter: 'operators',
-        reifyPredicate: 'operators',
-        doDeclareVariables: 'variables'
-    };
-    cat = dict[this.selector] || this.category;
-    if (cat === 'lists') {cat = 'variables'; }
-    ide.flushBlocksCache(cat);
-    ide.refreshPalette();
 };
 
 // Process sprite inheritance primitives
@@ -1932,7 +1980,6 @@ Process.prototype.shadowListAttribute = function (list) {
 // Process accessing list elements - hyper dyadic
 
 Process.prototype.reportListItem = function (index, list) {
-    var rank;
     this.assertType(list, 'list');
     if (index === '') {
         return '';
@@ -1943,70 +1990,89 @@ Process.prototype.reportListItem = function (index, list) {
     if (this.inputOption(index) === 'last') {
         return list.at(list.length());
     }
-    rank = this.rank(index);
-    if (rank > 0 && this.enableHyperOps) {
-        if (rank === 1) {
-            if (index.isEmpty()) {
-                return list.map(item => item);
-            }
-            return index.map(idx => list.at(idx));
-        }
-        return this.reportItems(index, list);
+    if (index instanceof List && this.enableHyperOps) {
+        return list.query(index);
     }
     return list.at(index);
 };
 
-Process.prototype.reportItems = function (indices, list) {
-    // This. This is it. The pinnacle of my programmer's life.
-    // After days of roaming about my house and garden,
-    // of taking showers and rummaging through the fridge,
-    // of strumming the charango and the five ukuleles
-    // sitting next to my laptop on my desk,
-    // and of letting my mind wander far and wide,
-    // to come up with this design, always thinking
-    // "What would Brian do?".
-    // And look, Ma, it's turned out all beautiful! -jens
+// Process - experimental tabular list ops
 
-    return makeSelector(
-        this.rank(list),
-        indices.cdr(),
-        makeLeafSelector(indices.at(1))
-    )(list);
+Process.prototype.reportTranspose = function (list) {
+    this.assertType(list, 'list');
+    return list.transpose();
+};
 
-    function makeSelector(rank, indices, next) {
-        if (rank === 1) {
-            return next;
-        }
-        return makeSelector(
-            rank - 1,
-            indices.cdr(),
-            makeBranch(
-                indices.at(1) || new List(),
-                next
-            )
-        );
+Process.prototype.reportCrossproduct = function (lists) {
+    this.assertType(lists, 'list');
+    if (lists.isEmpty()) {
+        return lists;
     }
+    this.assertType(lists.at(1), 'list');
+    return lists.crossproduct();
+};
 
-    function makeBranch(indices, next) {
-        return function(data) {
-            if (indices.isEmpty()) {
-                return data.map(item => next(item));
-            }
-            return indices.map(idx => next(data.at(idx)));
-        };
-    }
+Process.prototype.reportReshape = function (list, shape) {
+    this.assertType(shape, 'list');
+    list = list instanceof List ? list : new List([list]);
+    return list.reshape(shape);
+};
 
-    function makeLeafSelector(indices) {
-        return function (data) {
-            if (indices.isEmpty()) {
-                return data.map(item => item);
-            }
-            return indices.map(idx => data.at(idx));
-        };
-    }
+Process.prototype.reportSlice = function (list, indices) {
+    // currently not in use
+    this.assertType(list, 'list');
+    this.assertType(indices, 'list');
+    return list.slice(indices);
 };
 
 // Process - other basic list accessors
+
+Process.prototype.reportListAttribute = function (choice, list) {
+    var option = this.inputOption(choice);
+    switch (option) {
+    case 'length':
+        this.assertType(list, 'list');
+        return list.length();
+    case 'size':
+        this.assertType(list, 'list');
+        return list.size();
+    case 'rank':
+        return list instanceof List ? list.rank() : 0;
+    case 'dimensions':
+        return list instanceof List ? list.shape() : new List();
+    case 'flatten':
+        return list instanceof List ? list.ravel() : new List([list]);
+    case 'columns':
+        this.assertType(list, 'list');
+        return list.columns();
+    case 'transpose':
+        this.assertType(list, 'list');
+        return list.transpose();
+    case 'reverse':
+        this.assertType(list, 'list');
+        return list.reversed();
+    case 'lines':
+        this.assertType(list, 'list');
+        if (list.canBeTXT()) {
+            return list.asTXT();
+        }
+        throw new Error('unable to convert to lines');
+    case 'csv':
+        this.assertType(list, 'list');
+        if (list.canBeCSV()) {
+            return list.asCSV();
+        }
+        throw new Error('unable to convert to CSV');
+    case 'json':
+        this.assertType(list, 'list');
+        if (list.canBeJSON()) {
+            return list.asJSON();
+        }
+        throw new Error('unable to convert to JSON');
+    default:
+        return 0;
+    }
+};
 
 Process.prototype.reportListLength = function (list) {
     this.assertType(list, 'list');
@@ -2075,6 +2141,19 @@ Process.prototype.reportBasicNumbers = function (start, end) {
         }
     }
     return new List(result);
+};
+
+Process.prototype.reportListCombination = function (choice, lists) {
+    // experimental, currently not in use
+    var option = this.inputOption(choice);
+    switch (option) {
+    case 'append':
+        return this.reportConcatenatedLists(lists);
+    case 'cross product':
+        return this.reportCrossproduct(lists);
+    default:
+        return 0;
+    }
 };
 
 Process.prototype.reportConcatenatedLists = function (lists) {
@@ -2504,7 +2583,8 @@ Process.prototype.doRepeat = function (counter, body) {
         outer = this.context.outerContext, // for tail call elimination
         isCustomBlock = this.context.isCustomBlock;
 
-    if (counter < 1) { // was '=== 0', which caused infinite loops on non-ints
+    if (isNaN(counter) || counter < 1) {
+	// was '=== 0', which caused infinite loops on non-ints
         return null;
     }
     this.popContext();
@@ -2579,7 +2659,7 @@ Process.prototype.doForEach = function (upvar, list, script) {
     this.pushContext();
     this.context.outerContext.variables.addVar(upvar);
     this.context.outerContext.variables.setVar(upvar, next);
-    this.evaluate(script, new List([next]), true);
+    this.evaluate(script, new List(/*[next]*/), true);
 };
 
 Process.prototype.doFor = function (upvar, start, end, script) {
@@ -2862,12 +2942,23 @@ Process.prototype.reportCombine = function (list, reporter) {
 
     var next, current, index, parms;
     this.assertType(list, 'list');
-    if (list.length() < 2) {
-        this.returnValueToParentContext(list.length() ? list.at(1) : 0);
-        return;
-    }
     if (list.isLinked) {
         if (this.context.accumulator === null) {
+            // check for special cases to speed up
+            if (this.canRunOptimizedForCombine(reporter)) {
+                return this.reportListAggregation(
+                    list,
+                    reporter.expression.selector
+                );
+            }
+
+            // test for base cases
+            if (list.length() < 2) {
+                this.returnValueToParentContext(list.length() ? list.at(1) : 0);
+                return;
+            }
+
+            // initialize the accumulator
             this.context.accumulator = {
                 source : list.cdr(),
                 idx : 1,
@@ -2888,6 +2979,21 @@ Process.prototype.reportCombine = function (list, reporter) {
         next = this.context.accumulator.source.at(1);
     } else { // arrayed
         if (this.context.accumulator === null) {
+            // check for special cases to speed up
+            if (this.canRunOptimizedForCombine(reporter)) {
+                return this.reportListAggregation(
+                    list,
+                    reporter.expression.selector
+                );
+            }
+
+            // test for base cases
+            if (list.length() < 2) {
+                this.returnValueToParentContext(list.length() ? list.at(1) : 0);
+                return;
+            }
+
+            // initialize the accumulator
             this.context.accumulator = {
                 idx : 1,
                 target : list.at(1)
@@ -2913,6 +3019,62 @@ Process.prototype.reportCombine = function (list, reporter) {
         parms.push(list);
     }
     this.evaluate(reporter, new List(parms));
+};
+
+Process.prototype.reportListAggregation = function (list, selector) {
+    // private - used by reportCombine to optimize certain commutative
+    // operations such as sum, product, min, max hyperized all at once
+    var len = list.length(),
+        result, i;
+    if (len === 0) {
+        switch (selector) {
+        case 'reportProduct':
+            return 1;
+        case 'reportMin':
+            return Infinity;
+        case 'reportMax':
+            return -Infinity;
+        default: // reportSum
+            return 0;
+        }
+    }
+    result = list.at(1);
+    if (len > 1) {
+        for (i = 2; i <= len; i += 1) {
+            result = this[selector](result, list.at(i));
+        }
+    }
+    return result;
+};
+
+Process.prototype.canRunOptimizedForCombine = function (aContext) {
+    // private - used by reportCombine to check for optimizable
+    // special cases
+    var op = aContext.expression.selector,
+        eligible;
+    if (!op) {
+        return false;
+    }
+    eligible = ['reportSum', 'reportProduct', 'reportMin', 'reportMax'];
+    if (!contains(eligible, op)) {
+        return false;
+    }
+
+    // scan the expression's inputs, we can assume there are exactly two,
+    // because we're only looking at eligible selectors. Make sure none is
+    // a non-empty input slot or a variable getter whose name doesn't
+    // correspond to an input of the context.
+    // make sure the context has either no or exactly two inputs.
+    if (aContext.inputs.length === 0) {
+        return aContext.expression.inputs().every(each => each.bindingID);
+    }
+    if (aContext.inputs.length !== 2) {
+        return false;
+    }
+    return aContext.expression.inputs().every(each =>
+        each.selector === 'reportGetVar' &&
+            contains(aContext.inputs, each.blockSpec)
+    );
 };
 
 // Process interpolated primitives
@@ -3443,6 +3605,7 @@ Process.prototype.reportLastAnswer = function () {
 
 Process.prototype.reportURL = function (url) {
     var response;
+    this.checkURLAllowed(url);
     if (!this.httpRequest) {
         // use the location protocol unless the user specifies otherwise
         if (url.indexOf('//') < 0 || url.indexOf('//') > 8) {
@@ -3472,6 +3635,24 @@ Process.prototype.reportURL = function (url) {
     }
     this.pushContext('doYield');
     this.pushContext();
+};
+
+Process.prototype.checkURLAllowed = function (url) {
+    if ([ 'users', 'logout', 'projects', 'collections' ].some(
+        pathPart => {
+            // Check out whether we're targeting one of the remote domains
+            return Object.values(Cloud.prototype.knownDomains).filter(
+                each => each.includes('snap')
+            ).some(
+                domain => url.match(
+                    // Check only against the host -not the protocol, path or
+                    // port- of the domain
+                    new RegExp(`${(new URL(domain)).host}.*${pathPart}`, 'i'))
+            );
+        }
+    )) {
+        throw new Error('Request blocked');
+    }
 };
 
 // Process event messages primitives
@@ -3523,11 +3704,31 @@ Process.prototype.doBroadcast = function (message) {
         rcvrs.forEach(morph => {
             if (isSnapObject(morph)) {
                 morph.allHatBlocksFor(msg).forEach(block => {
-                    procs.push(stage.threads.startProcess(
-                        block,
-                        morph,
-                        stage.isThreadSafe
-                    ));
+                    var varName, varFrame;
+                    if (block.selector === 'receiveMessage') {
+                        varName = block.inputs()[1].evaluate()[0];
+                        if (varName) {
+                            varFrame = new VariableFrame();
+                            varFrame.addVar(varName, message);
+                        }
+                        procs.push(stage.threads.startProcess(
+                            block,
+                            morph,
+                            stage.isThreadSafe,
+                            null, // exportResult (bool)
+                            null, // callback
+                            null, // isClicked
+                            null, // rightAway
+                            null, // atomic
+                            varFrame
+                        ));
+                    } else {
+                        procs.push(stage.threads.startProcess(
+                            block,
+                            morph,
+                            stage.isThreadSafe
+                        ));
+                    }
                 });
             }
         });
@@ -3730,16 +3931,6 @@ Process.prototype.isMatrix = function (data) {
     return data instanceof List && data.at(1) instanceof List;
 };
 
-Process.prototype.rank = function(data) {
-    var rank = 0,
-        cur = data;
-    while (cur instanceof List) {
-        rank += 1;
-        cur = cur.at(1);
-    }
-    return rank;
-};
-
 // Process math primtives - arithmetic
 
 Process.prototype.reportSum = function (a, b) {
@@ -3820,7 +4011,14 @@ Process.prototype.reportMin = function (a, b) {
 };
 
 Process.prototype.reportBasicMin = function (a, b) {
-    return Math.min(+a, +b);
+    // return Math.min(+a, +b); // enhanced to also work with text
+    var x = +a,
+        y = +b;
+    if (isNaN(x) || isNaN(y)) {
+        x = a;
+        y = b;
+    }
+    return x < y ? x : y;
 };
 
 Process.prototype.reportMax = function (a, b) {
@@ -3828,7 +4026,14 @@ Process.prototype.reportMax = function (a, b) {
 };
 
 Process.prototype.reportBasicMax = function (a, b) {
-    return Math.max(+a, +b);
+    // return Math.max(+a, +b); // enhanced to also work with text
+    var x = +a,
+        y = +b;
+    if (isNaN(x) || isNaN(y)) {
+        x = a;
+        y = b;
+    }
+    return x > y ? x : y;
 };
 
 // Process logic primitives - hyper-diadic / monadic where applicable
@@ -3897,6 +4102,10 @@ Process.prototype.reportNot = function (bool) {
 
 Process.prototype.reportIsIdentical = function (a, b) {
     var tag = 'idTag';
+    if (isString(a) && isString(b)) {
+        // compare texts case-sentitive
+        return a === b;
+    }
     if (this.isImmutable(a) || this.isImmutable(b)) {
         return snapEquals(a, b);
     }
@@ -4486,6 +4695,64 @@ Process.prototype.goToLayer = function (name) {
     }
 };
 
+// Process scene primitives
+
+Process.prototype.doSwitchToScene = function (id, transmission) {
+    var rcvr = this.blockReceiver(),
+        idx = 0,
+        message = transmission.at(1),
+        ide, scenes, num, scene;
+    this.assertAlive(rcvr);
+    this.assertType(message, ['text', 'number']);
+    if (this.readyToTerminate || this.topBlock.selector === 'receiveOnScene') {
+        // let the user press "stop" or "esc",
+        // prevent "when this scene starts" hat blocks from directly
+        // switching to another
+        return;
+    }
+    ide = rcvr.parentThatIsA(IDE_Morph);
+    scenes = ide.scenes;
+
+    if (id instanceof Array) { // special named indices
+        switch (this.inputOption(id)) {
+        case 'next':
+            idx = scenes.indexOf(ide.scene) + 1;
+            if (idx > scenes.length()) {
+                idx = 1;
+            }
+            break;
+        case 'previous':
+            idx = scenes.indexOf(ide.scene) - 1;
+            if (idx < 1) {
+                idx = scenes.length();
+            }
+            break;
+        case 'last':
+            idx = scenes.length();
+            break;
+        case 'random':
+            idx = this.reportBasicRandom(1, scenes.length());
+            break;
+        }
+        this.stop();
+        // ide.onNextStep = () => // slow down scene switching, disabled for now
+        ide.switchToScene(scenes.at(idx), null, message);
+        return;
+    }
+
+    scene = detect(scenes.itemsArray(), scn => scn.name === id);
+    if (scene === null) {
+        num = parseFloat(id);
+        if (isNaN(num)) {
+            return;
+        }
+        scene = scenes.at(num);
+    }
+
+    this.stop();
+    ide.switchToScene(scene, null, message);
+};
+
 // Process color primitives
 
 Process.prototype.setHSVA = function (name, num) {
@@ -4904,10 +5171,12 @@ Process.prototype.reportRayLengthTo = function (name) {
         dir,
         a, b, x, y,
         top, bottom, left, right,
-        hSect, vSect,
+        circa, hSect, vSect,
         point, hit,
         temp,
         width, imageData;
+
+    circa = (num) => Math.round(num * 10000000) / 10000000; // good enough
 
     hSect = (yLevel) => {
         var theta = radians(dir);
@@ -4915,12 +5184,13 @@ Process.prototype.reportRayLengthTo = function (name) {
         a = b * Math.tan(theta);
         x = rc.x + a;
         if (
-            (x === rc.x &&
+            (circa(x) === circa(rc.x) &&
                 ((dir === 180 && rc.y < yLevel) ||
                 dir === 0 && rc.y > yLevel)
             ) ||
             (x > rc.x && dir >= 0 && dir < 180) ||
-            (x < rc.x && dir >= 180 && dir < 360)
+            (circa(x) < circa(rc.x) &&
+                dir >= 180 && dir < 360)
         ) {
             if (x >= left && x <= right) {
                 intersections.push(new Point(x, yLevel));
@@ -4934,7 +5204,7 @@ Process.prototype.reportRayLengthTo = function (name) {
         a = b * Math.tan(theta);
         y = rc.y + a;
         if (
-            (y === rc.y &&
+            (circa(y) === circa(rc.y) &&
                 ((dir === 90 && rc.x < xLevel) ||
                 dir === 270 && rc.x > xLevel)
             ) ||
@@ -5503,12 +5773,18 @@ Process.prototype.reportMouseDown = function () {
 };
 
 Process.prototype.reportKeyPressed = function (keyString) {
+    // hyper-monadic
     var stage;
     if (this.homeContext.receiver) {
         stage = this.homeContext.receiver.parentThatIsA(StageMorph);
         if (stage) {
             if (this.inputOption(keyString) === 'any key') {
                 return Object.keys(stage.keysPressed).length > 0;
+            }
+            if (keyString instanceof List && this.enableHyperOps) {
+                return keyString.map(
+                    each => stage.keysPressed[each] !== undefined
+                );
             }
             return stage.keysPressed[keyString] !== undefined;
         }
@@ -5832,6 +6108,12 @@ Process.prototype.doSetInstrument = function (num) {
 // Process image processing primitives
 
 Process.prototype.reportGetImageAttribute = function (choice, name) {
+    if (this.enableHyperOps) {
+        if (name instanceof List) {
+            return name.map(each => this.reportGetImageAttribute(choice, each));
+        }
+    }
+
     var cst = this.costumeNamed(name) || new Costume(),
         option = this.inputOption(choice);
 
@@ -5916,9 +6198,9 @@ Process.prototype.reportNewCostume = function (pixels, width, height, name) {
     src = pixels.itemsArray();
     dta = ctx.createImageData(width, height);
     for (i = 0; i < src.length; i += 1) {
-        px = src[i].itemsArray();
+        px = src[i] instanceof List ? src[i].itemsArray() : [src[i]];
         for (k = 0; k < 3; k += 1) {
-            dta.data[(i * 4) + k] = +px[k];
+            dta.data[(i * 4) + k] = px[k] === undefined ? +px[0] : +px[k];
         }
         dta.data[i * 4 + 3] = (px[3] === undefined ? 255 : +px[3]);
     }
@@ -6309,7 +6591,7 @@ Process.prototype.reportAtomicFindFirst = function (reporter, list) {
             return src[i];
          }
     }
-    return false;
+    return '';
 };
 
 Process.prototype.reportAtomicCombine = function (list, reporter) {
@@ -6320,14 +6602,21 @@ Process.prototype.reportAtomicCombine = function (list, reporter) {
     // #3 - optional | index
     // #4 - optional | source list
 
+    var result, src, len, formalParameterCount, parms, func, i;
     this.assertType(list, 'list');
-    var result = '',
-        src = list.itemsArray(),
-        len = src.length,
-        formalParameterCount = reporter.inputs.length,
-        parms,
-        func,
-        i;
+
+    // check for special cases to speed up
+    if (this.canRunOptimizedForCombine(reporter)) {
+        return this.reportListAggregation(
+            list,
+            reporter.expression.selector
+        );
+    }
+
+    result = '';
+    src = list.itemsArray();
+    len = src.length;
+    formalParameterCount = reporter.inputs.length;
 
 	if (len === 0) {
  		return result;
@@ -6674,20 +6963,32 @@ Context.prototype.stackSize = function () {
     return 1 + this.parentContext.stackSize();
 };
 
+Context.prototype.isInCustomBlock = function () {
+    if (this.isCustomBlock) {
+        return true;
+    }
+    if (this.parentContext) {
+        return this.parentContext.isInCustomBlock();
+    }
+    return false;
+};
+
 // Variable /////////////////////////////////////////////////////////////////
 
-function Variable(value, isTransient) {
+function Variable(value, isTransient, isHidden) {
     this.value = value;
     this.isTransient = isTransient || false; // prevent value serialization
+    this.isHidden = isHidden || false; // not shown in the blocks palette
 }
 
 Variable.prototype.toString = function () {
-    return 'a ' + (this.isTransient ? 'transient ' : '') + 'Variable [' +
-        this.value + ']';
+    return 'a ' + (this.isTransient ? 'transient ' : '') +
+        (this.isHidden ? 'hidden ' : '') +
+        'Variable [' + this.value + ']';
 };
 
 Variable.prototype.copy = function () {
-    return new Variable(this.value, this.isTransient);
+    return new Variable(this.value, this.isTransient, this.isHidden);
 };
 
 // VariableFrame ///////////////////////////////////////////////////////
@@ -6836,17 +7137,19 @@ VariableFrame.prototype.deleteVar = function (name) {
 
 // VariableFrame tools
 
-VariableFrame.prototype.names = function () {
+VariableFrame.prototype.names = function (includeHidden) {
     var each, names = [];
     for (each in this.vars) {
         if (Object.prototype.hasOwnProperty.call(this.vars, each)) {
-            names.push(each);
+            if (!this.vars[each].isHidden || includeHidden) {
+                names.push(each);
+            }
         }
     }
     return names;
 };
 
-VariableFrame.prototype.allNamesDict = function (upTo) {
+VariableFrame.prototype.allNamesDict = function (upTo, includeHidden) {
 	// "upTo" is an optional parent frame at which to stop, e.g. globals
     var dict = {}, current = this;
 
@@ -6854,7 +7157,9 @@ VariableFrame.prototype.allNamesDict = function (upTo) {
         var eachKey;
         for (eachKey in srcDict) {
             if (Object.prototype.hasOwnProperty.call(srcDict, eachKey)) {
-                trgtDict[eachKey] = eachKey;
+                if (!srcDict[eachKey].isHidden || includeHidden) {
+                    trgtDict[eachKey] = eachKey;
+                }
             }
         }
     }
@@ -6866,13 +7171,13 @@ VariableFrame.prototype.allNamesDict = function (upTo) {
     return dict;
 };
 
-VariableFrame.prototype.allNames = function (upTo) {
+VariableFrame.prototype.allNames = function (upTo, includeHidden) {
 /*
     only show the names of the lexical scope, hybrid scoping is
     reserved to the daring ;-)
 	"upTo" is an optional parent frame at which to stop, e.g. globals
 */
-    var answer = [], each, dict = this.allNamesDict(upTo);
+    var answer = [], each, dict = this.allNamesDict(upTo, includeHidden);
 
     for (each in dict) {
         if (Object.prototype.hasOwnProperty.call(dict, each)) {
@@ -6988,6 +7293,15 @@ JSCompiler.prototype.compileExpression = function (block) {
             'compiling does not yet support\n' +
             'custom blocks'
         );
+
+    // special evaluation primitives
+    case 'doRun':
+    case 'evaluate':
+        return 'invoke(' +
+            this.compileInput(inputs[0]) +
+            ',' +
+            this.compileInput(inputs[1]) +
+            ')';
 
     // special command forms
     case 'doSetVar': // redirect var to process

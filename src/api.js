@@ -7,7 +7,7 @@
     written by Jens Mönig
     jens@moenig.org
 
-    Copyright (C) 2020 by Jens Mönig
+    Copyright (C) 2021 by Jens Mönig
 
     This file is part of Snap!.
 
@@ -202,11 +202,13 @@
 
 */
 
-/*global modules, IDE_Morph, isString, Map, List, world*/
+/*global modules, IDE_Morph, isString, Map, List, world, isNil*/
+
+/*jshint esversion: 6*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.api = '2020-December-22';
+modules.api = '2021-July-05';
 
 // IDE_Morph external communication API - experimental
 /*
@@ -218,13 +220,15 @@ modules.api = '2020-December-22';
 window.onmessage = function (event) {
     // make the API accessible from outside an iframe
     var ide = world.children[0];
-    window.top.postMessage(
-        {
-            selector: event.data.selector,
-            response: ide[event.data.selector].apply(ide, event.data.params)
-        },
-        '*'
-    );
+    if (!isNil(event.data.selector)) {
+        window.top.postMessage(
+            {
+                selector: event.data.selector,
+                response: ide[event.data.selector].apply(ide, event.data.params)
+            },
+            '*'
+        );
+    }
 };
 
 IDE_Morph.prototype.broadcast = function(message, callback) {
