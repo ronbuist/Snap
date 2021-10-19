@@ -1429,7 +1429,9 @@ IDE_Morph.prototype.createCategories = function () {
     }
 
     SpriteMorph.prototype.categories.forEach(cat => {
-        addCategoryButton(cat);
+        if (!contains(['lists', 'other'], cat)) {
+            addCategoryButton(cat);
+        }
     });
 
     // sort alphabetically
