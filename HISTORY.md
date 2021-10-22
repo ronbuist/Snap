@@ -11,14 +11,16 @@
     * user defined custom block palettes
     * PWA, thanks, Joan and John, for pioneering this at Robolot and in Mircoblocks!
     * new "blocksZoom=n" url parameter, thanks, Bernat!
-    * message, key and scene hat blocks can be expanded to show an optional upvar referencing their event data
+    * message and key hat blocks can be expanded to show an optional upvar referencing their event data
     * added "enter" key to key-pressed dropdown
     * added "green flag" symbol to message drop-down
 * **Notable Changes:**
     * saved projects remember the last edited sprite
     * libraries no longer rely on the JSF primitive, project may need to re-import their libraries to run without having to enable JS extensions
     * bulk hide/show arbitrary blocks in the palette via the palette's context menu (instead of the primitive blocks' context menus)
-    * hidden blocks don't appear in search results / keyboard input options 
+    * hidden blocks don't appear in search results / keyboard input options
+    * renamed BROADCAST to SEND and added a second input for message receivers, default is "all"
+    * "when I receive 'any message'" hat scripts are threadsafe (uninterruptable by other messages)
     * retired Leap Motion library, took out Hummingbird library (get the current one from Birdbrain)
     * display blocks with their error messages for custom blocks, thanks, Michael!
     * made scrollbars thinner by default and slightly transparent in flat design mode
@@ -40,6 +42,21 @@
 * **Translation Updates:**
     * German
     * Chinese, thanks, Simon!
+
+### 2021-10-21
+* threads, objects: make "when I receive 'any message'" hat scripts threadsafe (uninterruptable by other messages)
+* threads: enabled sending atomic lists to other scenes
+* threads: took out broadcasting a 2-item list to mean a message directed to a particular sprite
+* blocks, objects, threads: added "all" option to the receiver-dropdown of the SEND block
+* objects, blocks, threads: replaced BROADCAST block variants with SEND block variants
+* tweaked German translation for "all"
+
+### 2021-10-20
+* blocks: enable sending green-flag events when switching scenes
+* blocks, objects, gui, threads: removed "When switched to this scene hat block"
+* objects: rearranged "switch to scene" and "pause all" blocks in the palette
+* updated German translation (removed "when switched to this scene")
+* blocks, threads: removed options "1" and "last" from "switch to scene" dropdown
 
 ### 2021-10-19
 * threads: enable sending green-flag events to specific sprites

@@ -160,7 +160,7 @@ CustomCommandBlockMorph, ToggleButtonMorph, DialMorph, SnapExtensions*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2021-October-14';
+modules.blocks = '2021-October-21';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -515,6 +515,11 @@ SyntaxElementMorph.prototype.labelParts = {
         tags: 'read-only',
         menu: 'locationMenu'
     },
+    '%rcv': {
+        type: 'input',
+        tags: 'read-only',
+        menu: 'receiversMenu'
+    },
     '%spr': {
         type: 'input',
         tags: 'read-only',
@@ -592,6 +597,10 @@ SyntaxElementMorph.prototype.labelParts = {
         type: 'input',
         tags: 'read-only static',
         menu: 'messagesReceivedMenu'
+    },
+    '%msgSend': {
+        type: 'input',
+        menu: 'eventsMenu'
     },
     '%att': {
         type: 'input',
@@ -994,7 +1003,7 @@ SyntaxElementMorph.prototype.labelParts = {
     },
     '%send': {
         type: 'multi',
-        slots: '%s',
+        slots: '%msgSend',
         label: 'and send',
         tags: 'static',
         max: 1
@@ -3124,7 +3133,7 @@ BlockMorph.prototype.userMenu = function () {
         return menu;
     }
     if (contains(
-        ['doBroadcast', 'doSend', 'doBroadcastAndWait', 'receiveMessage',
+        ['doSend', 'doSendAndWait', 'receiveMessage',
             'receiveOnClone', 'receiveGo'],
         this.selector
     )) {
@@ -3173,8 +3182,6 @@ BlockMorph.prototype.showMessageUsers = function () {
         message = '__shout__go__';
     } else if (this.selector === 'receiveOnClone') {
         message = '__clone__init__';
-    } else if (this.selector === 'receiveOnScene') {
-        message = '__scene__init__';
     } else if (inputs[0] instanceof InputSlotMorph) {
         message = inputs[0].evaluate();
     }
@@ -3221,15 +3228,12 @@ BlockMorph.prototype.isSending = function (message, receiverName, known = []) {
         }
         if ((morph.selector) &&
                 contains(
-                    ['doBroadcast', 'doBroadcastAndWait', 'doSend'],
+                    ['doSend', 'doSendAndWait'],
                     morph.selector)
         ) {
             event = morph.inputs()[0].evaluate();
-            if (morph.selector === 'doSend') {
-                eventReceiver = morph.inputs()[1].evaluate();
-            }
-            return ((morph.selector !== 'doSend') ||
-                    (receiverName === eventReceiver)) &&
+            eventReceiver = morph.inputs()[1].evaluate();
+            return receiverName === eventReceiver &&
                 ((event === message) ||
                     (message instanceof Array &&
                         message[0] === 'any message'));
@@ -9357,6 +9361,11 @@ InputSlotMorph.prototype.messagesReceivedMenu = function (searching) {
     return dict;
 };
 
+InputSlotMorph.prototype.eventsMenu = function (searching) {
+    if (searching) {return {}; }
+    return {__shout__go__: ['__shout__go__']};
+};
+
 InputSlotMorph.prototype.primitivesMenu = function () {
     var dict = {},
         allNames = Array.from(SnapExtensions.primitives.keys());
@@ -9519,6 +9528,22 @@ InputSlotMorph.prototype.objectsMenu = function (searching, includeMyself) {
             dict[name] = name
         );
     }
+    return dict;
+};
+
+InputSlotMorph.prototype.receiversMenu = function (searching) {
+    var rcvr = this.parentThatIsA(BlockMorph).scriptTarget(),
+        stage = rcvr.parentThatIsA(StageMorph),
+        dict = {all: ['all']};
+
+    if (searching) {return dict; }
+    dict['~'] = null;
+    dict[stage.name] = stage.name;
+    stage.children.forEach(morph => {
+        if (morph instanceof SpriteMorph && !morph.isTemporary) {
+            dict[morph.name] = morph.name;
+        }
+    });
     return dict;
 };
 
@@ -9803,8 +9828,8 @@ InputSlotMorph.prototype.scenesMenu = function (searching) {
     dict['~'] = null;
     dict.next = ['next'];
     dict.previous = ['previous'];
-    dict['1 '] = 1; // trailing space needed to prevent undesired sorting
-    dict.last = ['last'];
+    // dict['1 '] = 1; // trailing space needed to prevent undesired sorting
+    // dict.last = ['last'];
     dict.random = ['random'];
     return dict;
 };
@@ -9919,7 +9944,8 @@ InputSlotMorph.prototype.fixLayout = function () {
 // InputSlotMorph events:
 
 InputSlotMorph.prototype.mouseDownLeft = function (pos) {
-    if (this.isReadOnly || this.arrow().bounds.containsPoint(pos)) {
+    if (this.isReadOnly || this.symbol ||
+            this.arrow().bounds.containsPoint(pos)) {
         this.escalateEvent('mouseDownLeft', pos);
     } else {
         this.selectForEdit().contents().edit();
@@ -9929,7 +9955,7 @@ InputSlotMorph.prototype.mouseDownLeft = function (pos) {
 InputSlotMorph.prototype.mouseClickLeft = function (pos) {
     if (this.arrow().bounds.containsPoint(pos)) {
         this.dropDownMenu();
-    } else if (this.isReadOnly) {
+    } else if (this.isReadOnly || this.symbol) {
         this.dropDownMenu();
     } else {
         this.contents().edit();
