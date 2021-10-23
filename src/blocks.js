@@ -160,7 +160,7 @@ CustomCommandBlockMorph, ToggleButtonMorph, DialMorph, SnapExtensions*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2021-October-21';
+modules.blocks = '2021-October-22';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -311,6 +311,7 @@ SyntaxElementMorph.prototype.labelParts = {
         type: 'input'
         tags: 'numeric read-only unevaluated landscape static'
         menu: dictionary or selector
+        react: selector
     */
     '%s': {
         type: 'input'
@@ -586,7 +587,8 @@ SyntaxElementMorph.prototype.labelParts = {
     '%keyHat': {
         type: 'input',
         tags: 'read-only static',
-        menu: 'keysMenu'
+        menu: 'keysMenu',
+        react: 'updateEventUpvar'
     },
     '%msg': {
         type: 'input',
@@ -596,7 +598,8 @@ SyntaxElementMorph.prototype.labelParts = {
     '%msgHat': {
         type: 'input',
         tags: 'read-only static',
-        menu: 'messagesReceivedMenu'
+        menu: 'messagesReceivedMenu',
+        react: 'updateEventUpvar'
     },
     '%msgSend': {
         type: 'input',
@@ -1005,6 +1008,13 @@ SyntaxElementMorph.prototype.labelParts = {
         type: 'multi',
         slots: '%msgSend',
         label: 'and send',
+        tags: 'static',
+        max: 1
+    },
+    '%receive': {
+        type: 'multi',
+        slots: '%rcv',
+        label: 'to',
         tags: 'static',
         max: 1
     },
@@ -1610,6 +1620,7 @@ SyntaxElementMorph.prototype.labelPart = function (spec) {
         switch (info.type) {
         case 'input':
             part = new InputSlotMorph(null, null, info.menu);
+            part.onSetContents = info.react || null;
             break;
         case 'text entry':
             part = new TextSlotMorph();
@@ -1836,6 +1847,7 @@ SyntaxElementMorph.prototype.fixLayout = function () {
         ico = this instanceof BlockMorph && this.hasLocationPin() ?
         	this.methodIconExtent().x + space : 0,
         bottomCorrection,
+        rightMost,
         hasLoopCSlot = false,
         hasLoopArrow = false;
 
@@ -2019,8 +2031,9 @@ SyntaxElementMorph.prototype.fixLayout = function () {
             maxX - this.left() + this.labelPadding - this.edge
         );
         // adjust right padding if rightmost input has arrows
-        if (parts[parts.length - 1] instanceof MultiArgMorph
-                && (lines.length === 1)) {
+        rightMost = parts[parts.length - 1];
+        if (rightMost instanceof MultiArgMorph && rightMost.isVisible &&
+                (lines.length === 1)) {
             blockWidth -= space;
         }
         // adjust width to hat width
@@ -3133,7 +3146,7 @@ BlockMorph.prototype.userMenu = function () {
         return menu;
     }
     if (contains(
-        ['doSend', 'doSendAndWait', 'receiveMessage',
+        ['doBroadcast', 'doBroadcastAndWait', 'receiveMessage',
             'receiveOnClone', 'receiveGo'],
         this.selector
     )) {
@@ -3186,7 +3199,8 @@ BlockMorph.prototype.showMessageUsers = function () {
         message = inputs[0].evaluate();
     }
 
-    if (((this.selector === 'doSend') && inputs[1] instanceof InputSlotMorph)) {
+    if (((this.selector === 'doBroadcast') &&
+            inputs[1] instanceof InputSlotMorph)) {
         receiverName = this.inputs()[1].evaluate();
     } else if (this.selector.indexOf('receive') === 0) {
         receiverName = this.scriptTarget().name;
@@ -3199,7 +3213,7 @@ BlockMorph.prototype.showMessageUsers = function () {
         corral.frame.contents.children.concat(corral.stageIcon).forEach(
             icon => {
                 if (icon.object &&
-                    ((this.selector !== 'doSend' ||
+                    ((this.selector !== 'doBroadcast' ||
                         receiverName === icon.object.name) &&
                     (icon.object[getter](
                         message,
@@ -3228,7 +3242,7 @@ BlockMorph.prototype.isSending = function (message, receiverName, known = []) {
         }
         if ((morph.selector) &&
                 contains(
-                    ['doSend', 'doSendAndWait'],
+                    ['doBroadcast', 'doBroadcastAndWait'],
                     morph.selector)
         ) {
             event = morph.inputs()[0].evaluate();
@@ -8928,10 +8942,10 @@ CSlotMorph.prototype.drawBottomEdge = function (ctx) {
     my most important public attributes and accessors are:
 
     setContents(str/float)    - display the argument (string or float)
-    contents().text            - get the displayed string
-    choices                    - a key/value list for my optional drop-down
+    contents().text           - get the displayed string
+    choices                   - a key/value list for my optional drop-down
     isReadOnly                - governs whether I am editable or not
-    isNumeric                - governs my outer shape (round or rect)
+    isNumeric                 - governs my outer shape (round or rect)
 
     my block specs are:
 
@@ -8985,6 +8999,7 @@ InputSlotMorph.prototype.init = function (
     this.isReadOnly = isReadOnly || false;
     this.minWidth = 0; // can be chaged for text-type inputs ("landscape")
     this.constant = null;
+    this.onSetContents = null;
 
     InputSlotMorph.uber.init.call(this, null, true);
     this.color = WHITE;
@@ -9068,6 +9083,11 @@ InputSlotMorph.prototype.setContents = function (data) {
     // adjust to zebra coloring:
     if (this.isReadOnly && (this.parent instanceof BlockMorph)) {
         this.parent.fixLabelColor();
+    }
+
+    // run onSetContents if any
+    if (this.onSetContents) {
+        this[this.onSetContents](data);
     }
 };
 
@@ -10005,6 +10025,31 @@ InputSlotMorph.prototype.userMenu = function () {
     }
     return menu;
 };
+
+// InputSlotMorph reacting to user choices
+
+/*
+    if selecting an option from a dropdown menu might affect the visibility
+    or contents of another input slot, the methods in this section can
+    offer functionality that can be specified externally by setting
+    the "onSetContents" property to the name of the according method
+*/
+
+InputSlotMorph.prototype.updateEventUpvar = function (data) {
+    // assumes a second multi-arg input slot to my right that is
+    // either shown or hidden and collapsed based on whether
+    // "any ..." is selected as choice.
+
+    var trg = this.parent.inputs()[1];
+    if (data instanceof Array && data[0].indexOf('any') === 0) {
+        trg.show();
+    } else {
+        trg.removeInput();
+        trg.hide();
+    }
+    this.parent.fixLayout();
+};
+
 
 // InputSlotMorph code mapping
 
@@ -11713,6 +11758,15 @@ MultiArgMorph.prototype.getSpec = function () {
 
 MultiArgMorph.prototype.setContents = function (anArray) {
     var inputs = this.inputs(), i;
+
+    if (!(anArray instanceof Array) && this.slotSpec === '%rcv') {
+        // special case for migrating former SEND block inputs to
+        // newer BROADCAST expansion slots for receivers
+        // this can be removed once all SEND blocks have been
+        // converted to v7
+        anArray = [anArray];
+    }
+
     for (i = 0; i < anArray.length; i += 1) {
         if (anArray[i] !== null && (inputs[i])) {
             inputs[i].setContents(anArray[i]);
