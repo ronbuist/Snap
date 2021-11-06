@@ -1,3 +1,5 @@
+var snapVersion = '7-dev211103'
+
 var cacheName = 'snap-pwa',
     filesToCache = [
         'snap.html',
@@ -83,6 +85,7 @@ var cacheName = 'snap-pwa',
         'libraries/biginteger.js',
         'libraries/bignumbers.xml',
         'libraries/bignums.js',
+        'libraries/bbtSnapExtension.js',
         'libraries/cases.xml',
         'libraries/colors.xml',
         'libraries/Eisenbergification.xml',

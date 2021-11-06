@@ -19,10 +19,12 @@
     * libraries no longer rely on the JSF primitive, project may need to re-import their libraries to run without having to enable JS extensions
     * bulk hide/show arbitrary blocks in the palette via the palette's context menu (instead of the primitive blocks' context menus)
     * hidden blocks don't appear in search results / keyboard input options
+    * codification and js-func blocks don't appear in search results unless enabled
     * made BROADCAST blocks expandable and added a second input for message receivers, default is "all"
     * migrated SEND blocks to be BROADCAST TO blocks
     * "when I receive 'any message'" hat scripts are threadsafe (uninterruptable by other messages)
-    * retired Leap Motion library, took out Hummingbird library (get the current one from Birdbrain)
+    * new Birdbrain Technology extensions for Finch and Hummingbird, thanks, Kristina and Bambi!
+    * retired Leap Motion library
     * display blocks with their error messages for custom blocks, thanks, Michael!
     * made scrollbars thinner by default and slightly transparent in flat design mode
     * blocked xhr requests to from Snap! to s.b.e
@@ -37,12 +39,55 @@
     * fixed copying unattached comments among sprites, thanks, Jadga, for the report!
     * disabled dropping reporters onto message hat block input slots
     * fixed outdated blocks specs for "When I am ..." hat block in many translations
+    * fixed duplicating custom block definitions that don't have a body
+    * allow selecting the fill color in the vector editor via touch-hold gesture on touch devices
 * **Documentation Updates:**
     * updated manual, thanks Brian!
     * updated readme, thanks, Michael!
 * **Translation Updates:**
     * German
     * Chinese, thanks, Simon!
+
+### 2021-11-03
+* sketch: allow selecting the fill color in the vector editor via touch-hold gesture on touch devices
+* updated version history
+
+### 2021-10-29
+* objects: flood-fill edge case fix, thanks, Dariusz!
+* gui: removed obsolete dev comments
+* blocks, objects: fixed scanning for senders and receivers of messages for new BROADCAST scheme
+
+### 2021-10-28
+* introduced default values for expandable slot specs
+* updated German translation
+* migrated Basque and Swedish translations to new BROADCAST block specs
+* migrated Slovenian, Romanian and Interlingua translations to new BROADCAST block specs
+* migrated Estonian, Hungarian, Croatian and Esperanto translations to new BROADCAST block specs
+* migrated Danish, Czech, Valencian Catalan and Arabic translations to new BROADCAST block specs
+* migrated Bulgarian, Traditional Chinese, Indonesian and Galician translations to new BROADCAST block specs
+* migrated Hebrew, Japanese Hiragana, Slovakian and Ukrainian translations to new BROADCAST block specs
+* migrated Japanese, Bangla, Portuguese and Norwegian translations to new BROADCAST block specs
+* migrated French, Italian, Greek and Spanish translations to new BROADCAST block specs
+* migrated Russian, Dutch, Tamil and Turkish translations to new BROADCAST block specs
+* migrated Catalan, Hindi, Polish and Telagu translations to new BROADCAST block specs
+* migrated Brazilian Portuguese, Malayam, Korean and Kannada translations to new BROADCAST block specs
+* migrated Finnish and Simplified Chinese translations to new BROADCAST block specs
+
+### 2021-10-27
+* included bbt extensions
+* updated service worker to cache bbtSnapExtension.js
+* pwa versioning & cache-busting mechanism 
+* changed PWA icon to Alonzo
+* tweaked PWA
+
+### 2021-10-26
+* objects: don't show codification and js-func blocks in search results unless enabled
+* gui, objects: new "showingExtensions" session setting for showing extension prims in the palette
+* German translation update for "extension blocks" setting
+* widgets: r-g-b editor for custom category colors (right-click on color-field)
+
+### 2021-10-25
+* byob: fixed #2902
 
 ### 2021-10-22
 * blocks, objects: only show the "message" upvar in the "When I receive" hat if "any message" is selected

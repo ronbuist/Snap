@@ -87,7 +87,7 @@ BlockVisibilityDialogMorph*/
 
 /*jshint esversion: 6*/
 
-modules.objects = '2021-October-22';
+modules.objects = '2021-October-29';
 
 var SpriteMorph;
 var StageMorph;
@@ -183,6 +183,7 @@ SpriteMorph.prototype.isCachingPrimitives = true;
 
 SpriteMorph.prototype.enableNesting = true;
 SpriteMorph.prototype.enableFirstClass = true;
+SpriteMorph.prototype.showingExtensions = false;
 SpriteMorph.prototype.useFlatLineEnds = false;
 SpriteMorph.prototype.highlightColor = new Color(250, 200, 130);
 SpriteMorph.prototype.highlightBorder = 8;
@@ -761,14 +762,12 @@ SpriteMorph.prototype.initBlocks = function () {
         doBroadcast: {
             type: 'command',
             category: 'control',
-            spec: 'broadcast %msg %receive',
-            defaults: [null, ['all']]
+            spec: 'broadcast %msg %receive'
         },
         doBroadcastAndWait: {
             type: 'command',
             category: 'control',
-            spec: 'broadcast %msg %receive and wait',
-            defaults: [null, ['all']]
+            spec: 'broadcast %msg %receive and wait'
         },
         doWait: {
             type: 'command',
@@ -2743,13 +2742,8 @@ SpriteMorph.prototype.blockTemplates = function (
         blocks.push(block('doInsertInList'));
         blocks.push(block('doReplaceInList'));
 
-        // for debugging: ///////////////
-        if (devMode) {
-            blocks.push('-');
-            blocks.push(this.devModeText());
-            blocks.push('-');
-            blocks.push(block('doShowTable'));
-            blocks.push('-');
+        if (SpriteMorph.prototype.showingExtensions) {
+            blocks.push('=');
             blocks.push(block('doApplyExtension'));
             blocks.push(block('reportApplyExtension'));
         }
@@ -2761,6 +2755,14 @@ SpriteMorph.prototype.blockTemplates = function (
             blocks.push(block('doMapListCode'));
             blocks.push('-');
             blocks.push(block('reportMappedCode'));
+        }
+
+        // for debugging: ///////////////
+        if (this.world().isDevMode) {
+            blocks.push('-');
+            blocks.push(this.devModeText());
+            blocks.push('-');
+            blocks.push(block('doShowTable'));
         }
     }
 
@@ -3187,6 +3189,30 @@ SpriteMorph.prototype.isHidingBlock = function (aBlock) {
     return StageMorph.prototype.hiddenPrimitives[aBlock.selector] === true;
 };
 
+SpriteMorph.prototype.isDisablingBlock = function (aBlock) {
+    // show or hide certain kinds of blocks in search results only
+    // if they are enabled
+    var sel = aBlock.selector;
+    if (sel === 'reportJSFunction') {
+        return !Process.prototype.enableJS;
+    }
+    if (
+        sel === 'doApplyExtension' ||
+        sel === 'reportApplyExtension'
+    ) {
+        return !SpriteMorph.prototype.showingExtensions;
+    }
+    if (
+        sel === 'doMapCodeOrHeader' ||
+        sel === 'doMapValueCode' ||
+        sel === 'doMapListCode' ||
+        sel === 'reportMappedCode'
+    ) {
+        return !StageMorph.prototype.enableCodeMapping;
+    }
+    return false;
+};
+
 SpriteMorph.prototype.changeBlockVisibility = function (aBlock, hideIt, quick) {
     var ide, dict, cat;
     if (aBlock.isCustomBlock) {
@@ -3343,7 +3369,10 @@ SpriteMorph.prototype.blocksMatching = function (
     }
     blocks.sort((x, y) => x[1] < y[1] ? -1 : 1);
     blocks = blocks.map(each => each[0]);
-    return blocks.filter(each => !this.isHidingBlock(each));
+    return blocks.filter(each =>
+        !this.isHidingBlock(each) &&
+        !this.isDisablingBlock(each)
+    );
 };
 
 SpriteMorph.prototype.searchBlocks = function (
@@ -5543,8 +5572,8 @@ SpriteMorph.prototype.floodFill = function () {
         img = ctx.getImageData(0, 0, width, height),
         dta = img.data,
         stack = [
-            Math.round((height / 2) - this.yPosition()) * width +
-            Math.round(this.xPosition() + (width / 2))
+            Math.floor((height / 2) - this.yPosition()) * width +
+            Math.floor(this.xPosition() + (width / 2))
         ],
         current,
         src;
@@ -8977,25 +9006,27 @@ StageMorph.prototype.blockTemplates = function (
         blocks.push(block('doInsertInList'));
         blocks.push(block('doReplaceInList'));
 
+        if (SpriteMorph.prototype.showingExtensions) {
+            blocks.push('=');
+            blocks.push(block('doApplyExtension'));
+            blocks.push(block('reportApplyExtension'));
+        }
+
+        if (StageMorph.prototype.enableCodeMapping) {
+            blocks.push('=');
+            blocks.push(block('doMapCodeOrHeader'));
+            blocks.push(block('doMapValueCode'));
+            blocks.push(block('doMapListCode'));
+            blocks.push('-');
+            blocks.push(block('reportMappedCode'));
+        }
+
         // for debugging: ///////////////
         if (this.world().isDevMode) {
             blocks.push('-');
             blocks.push(this.devModeText());
             blocks.push('-');
             blocks.push(block('doShowTable'));
-            blocks.push('-');
-            blocks.push(block('doApplyExtension'));
-            blocks.push(block('reportApplyExtension'));
-        }
-
-        blocks.push('=');
-
-        if (StageMorph.prototype.enableCodeMapping) {
-            blocks.push(block('doMapCodeOrHeader'));
-            blocks.push(block('doMapValueCode'));
-            blocks.push(block('doMapListCode'));
-            blocks.push('-');
-            blocks.push(block('reportMappedCode'));
         }
     }
 
@@ -9687,7 +9718,7 @@ StageMorph.prototype.reportPenTrailsAsCostume = function () {
 StageMorph.prototype.globalBlocksSending = function (message, receiverName) {
     // "transitive hull"
     var all = this.globalBlocks.filter(
-            def =>def.isSending(message, receiverName)
+            def => def.isSending(message, receiverName)
         );
     this.globalBlocks.forEach(def => {
         if (def.collectDependencies().some(dep => contains(all, dep))) {
