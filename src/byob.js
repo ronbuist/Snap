@@ -52,6 +52,7 @@
         BlockExportDialogMorph
         BlockImportDialogMorph
         BlockRemovalDialogMorph
+        BlockVisibilityDialogMorph
         InputSlotDialogMorph
         VariableDialogMorph
 
@@ -91,6 +92,7 @@
     BlockExportDialogMorph
     BlockImportDialogMorph
     BlockRemovalDialogMorph
+    BlockVisibilityDialogMorph
 
 */
 
@@ -108,7 +110,7 @@ WatcherMorph, XML_Serializer, SnapTranslator, SnapExtensions*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.byob = '2021-October-25';
+modules.byob = '2021-December-16';
 
 // Declarations
 
@@ -128,6 +130,7 @@ var JaggedBlockMorph;
 var BlockExportDialogMorph;
 var BlockImportDialogMorph;
 var BlockRemovalDialogMorph;
+var BlockVisibilityDialogMorph;
 
 // CustomBlockDefinition ///////////////////////////////////////////////
 
@@ -1079,7 +1082,7 @@ CustomCommandBlockMorph.prototype.userMenu = function () {
         rcvr = this.scriptTarget(),
         myself = this,
         // shiftClicked = this.world().currentKey === 16,
-        menu;
+        dlg, menu;
 
     function addOption(label, toggle, test, onHint, offHint) {
         menu.addItem(
@@ -1184,6 +1187,10 @@ CustomCommandBlockMorph.prototype.userMenu = function () {
         );
     } else {
         menu = this.constructor.uber.userMenu.call(this);
+        dlg = this.parentThatIsA(DialogBoxMorph);
+        if (dlg && !(dlg instanceof BlockEditorMorph)) {
+            return menu;
+        }
         if (!menu) {
             menu = new MenuMorph(this);
         } else {
@@ -1277,7 +1284,8 @@ CustomCommandBlockMorph.prototype.exportBlockDefinition = function () {
     var ide = this.parentThatIsA(IDE_Morph);
     new BlockExportDialogMorph(
         ide.serializer,
-        [this.definition].concat(this.definition.collectDependencies())
+        [this.definition].concat(this.definition.collectDependencies()),
+        ide
     ).popUp(this.world());
 };
 
@@ -1360,6 +1368,7 @@ CustomCommandBlockMorph.prototype.deleteBlockDefinition = function () {
             ide = rcvr.parentThatIsA(IDE_Morph);
             if (ide) {
                 ide.flushPaletteCache();
+                ide.categories.refreshEmpty();
                 ide.refreshPalette();
                 ide.recordUnsavedChanges();
             }
@@ -2546,6 +2555,7 @@ BlockEditorMorph.prototype.updateDefinition = function () {
     this.refreshAllBlockInstances(oldSpec);
     ide = this.target.parentThatIsA(IDE_Morph);
     ide.flushPaletteCache();
+    ide.categories.refreshEmpty();
     ide.refreshPalette();
     ide.recordUnsavedChanges();
 };
@@ -4134,11 +4144,11 @@ BlockExportDialogMorph.prototype.key = 'blockExport';
 
 // BlockExportDialogMorph instance creation:
 
-function BlockExportDialogMorph(serializer, blocks) {
-    this.init(serializer, blocks);
+function BlockExportDialogMorph(serializer, blocks, target) {
+    this.init(serializer, blocks, target);
 }
 
-BlockExportDialogMorph.prototype.init = function (serializer, blocks) {
+BlockExportDialogMorph.prototype.init = function (serializer, blocks, target) {
     // additional properties:
     this.serializer = serializer;
     this.blocks = blocks.slice(0);
@@ -4147,7 +4157,7 @@ BlockExportDialogMorph.prototype.init = function (serializer, blocks) {
     // initialize inherited properties:
     BlockExportDialogMorph.uber.init.call(
         this,
-        null, // target
+        target, // target
         () => this.exportBlocks(),
         null // environment
     );
@@ -4187,6 +4197,7 @@ BlockExportDialogMorph.prototype.buildContents = function () {
                 }
                 lastCat = category;
                 block = definition.templateInstance();
+                block.isToggleLabel = true; // mark as unrefreshable label
                 checkBox = new ToggleMorph(
                     'checkbox',
                     this,
@@ -4202,7 +4213,7 @@ BlockExportDialogMorph.prototype.buildContents = function () {
                     () => contains(this.blocks, definition),
                     null,
                     null,
-                    block.fullImage()
+                    this.target ? block : block.fullImage()
                 );
                 checkBox.setPosition(new Point(
                     x,
@@ -4280,7 +4291,10 @@ BlockExportDialogMorph.prototype.exportBlocks = function () {
             + '</blocks>';
         ide.saveXMLAs(
             str,
-            (ide.projectName || localize('untitled')) + ' ' + localize('blocks')
+            (ide.getProjectName() || localize('untitled')) +
+                ' ' +
+                localize('blocks'
+            )
         );
     } else {
         new DialogBoxMorph().inform(
@@ -4380,6 +4394,7 @@ BlockImportDialogMorph.prototype.importBlocks = function (name) {
             ide.stage.replaceDoubleDefinitionsFor(def);
         });
         ide.flushPaletteCache();
+        ide.categories.refreshEmpty();
         ide.refreshPalette();
         ide.showMessage(
             'Imported Blocks Module' + (name ? ': ' + name : '') + '.',
@@ -4461,7 +4476,7 @@ BlockRemovalDialogMorph.prototype.selectNone
 // BlockRemovalDialogMorph ops
 
 BlockRemovalDialogMorph.prototype.removeBlocks = function () {
-    var ide = this.target.parentThatIsA(IDE_Morph);
+    var ide = this.target;
     if (!ide) {return; }
     if (this.blocks.length > 0) {
         this.blocks.forEach(def => {
@@ -4471,6 +4486,7 @@ BlockRemovalDialogMorph.prototype.removeBlocks = function () {
             }
         });
         ide.flushPaletteCache();
+        ide.categories.refreshEmpty();
         ide.refreshPalette();
         ide.showMessage(
             this.blocks.length + ' ' + localize('unused block(s) removed'),
@@ -4559,6 +4575,7 @@ BlockVisibilityDialogMorph.prototype.buildContents = function () {
         }
         lastCat = block.category;
 
+        block.isToggleLabel = true; // mark block as unrefreshable toggle label
         checkBox = new ToggleMorph(
             'checkbox',
             this,
@@ -4574,7 +4591,7 @@ BlockVisibilityDialogMorph.prototype.buildContents = function () {
             () => contains(this.selection, block),
             null,
             null,
-            block.fullImage()
+            block // allow block to be dragged off from templates
         );
         checkBox.setPosition(new Point(
             x,
@@ -4675,6 +4692,7 @@ BlockVisibilityDialogMorph.prototype.hideBlocks = function () {
     }
     ide.flushBlocksCache();
     ide.refreshPalette();
+    ide.categories.refreshEmpty();
     ide.recordUnsavedChanges();
 };
 

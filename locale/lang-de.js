@@ -185,7 +185,7 @@ SnapTranslator.dict.de = {
     'translator_e-mail':
         'jens@moenig.org, jadga.huegle@sap.com', // optional
     'last_changed':
-        '2021-10-28', // this, too, will appear in the Translators tab
+        '2021-12-10', // this, too, will appear in the Translators tab
 
     // GUI
     // control bar:
@@ -469,14 +469,14 @@ SnapTranslator.dict.de = {
         'setze Stiftfarbe auf %clr',
     'set background color to %clr':
         'setze Hintergrundfarbe auf %clr',
-    'change pen %hsva by %n':
-        '\u00e4ndere Stift %hsva um %n',
-    'change background %hsva by %n':
-        '\u00e4ndere Hintergrund %hsva um %n',
-    'set pen %hsva to %n':
-        'setze Stift %hsva auf %n',
-    'set background %hsva to %n':
-        'setze Hintergrund %hsva auf %n',
+    'change pen %clrdim by %n':
+        '\u00e4ndere Stift %clrdim um %n',
+    'change background %clrdim by %n':
+        '\u00e4ndere Hintergrund %clrdim um %n',
+    'set pen %clrdim to %n':
+        'setze Stift %clrdim auf %n',
+    'set background %clrdim to %n':
+        'setze Hintergrund %clrdim auf %n',
     'pen %pen':
         'Stift %pen',
     'change pen size by %n':
@@ -725,6 +725,14 @@ SnapTranslator.dict.de = {
         'Rahmenz\u00e4hler',
     'log pen vectors':
         'Vektoraufzeichnung',
+    '%block of block %repRing':
+        '%block von Block %repRing',
+    'definition':
+        'Definition',
+    'custom?':
+        'benutzerdefiniert?',
+    'global?':
+        'global?',
 
     // operators:
     '%n mod %n':
@@ -924,7 +932,7 @@ SnapTranslator.dict.de = {
     'save global custom block\ndefinitions as XML':
         'globale Benutzerblockdefinitionen\nals XML-Datei speichern',
     'Unused blocks...':
-          'nicht verwendete Bl\u00f6cke...',
+          'Nicht verwendete Bl\u00f6cke...',
     'find unused global custom blocks\nand remove their definitions':
         'nicht verwendete Bl\u00f6cke finden\nund entfernen',
     'Remove unused blocks':
@@ -933,6 +941,18 @@ SnapTranslator.dict.de = {
         'momentan keine nicht verwendeten\nBl\u00f6cke in diesem Projekt',
     'unused block(s) removed':
         'nicht verwendete Bl\u00f6cke entfernt',
+    'Hide blocks...':
+        'Blöcke verbergen...',
+    'New category...':
+        'Neue Kategorie...',
+    'Remove a category...':
+        'Kategorie löschen...',
+    'Scenes...':
+        'Szenen...',
+    'New scene':
+        'Neue Szene',
+    'Add scene...':
+        'Szene hinzufügen...',
     'Export summary...':
         'Zusammenfassung exportieren...',
     'save a summary\nof this project':
@@ -1077,14 +1097,6 @@ SnapTranslator.dict.de = {
         'einschalten, um immer die Datentypen\nim Input-Dialog zu sehen',
     'uncheck to use the input\ndialog in short form':
         'ausschalten f\u00fcr kurzen\nInput-Dialog',
-    'Virtual keyboard':
-        'Virtuelle Tastatur',
-    'uncheck to disable\nvirtual keyboard support\nfor mobile devices':
-        'ausschalten um die virtuelle\nTastatur auf mobilen Ger\u00e4ten\n'
-            + 'zu sperren',
-    'check to enable\nvirtual keyboard support\nfor mobile devices':
-        'einschalten um die virtuelle\nTastatur auf mobilen Ger\u00e4ten\n'
-            + 'zu erm\u00f6glichen',
     'JavaScript extensions':
         'JavaScript Erweiterungen',
     'check to support\nnative JavaScript functions':
@@ -1153,12 +1165,6 @@ SnapTranslator.dict.de = {
         'verhindert, dass unvollendete\nSkripte erneut gestartet werden',
     'check to disallow\nscript reentrance':
         'verhindert, dass unvollendete\nSkripte erneut gestartet werden',
-    'Prefer smooth animations':
-        'Fixe Framerate',
-    'uncheck for greater speed\nat variable frame rates':
-        'ausschalten, um Animationen \ndynamischer auszuf\u00fchren',
-    'check for smooth, predictable\nanimations across computers':
-        'einschalten, damit Animationen\n\u00fcberall gleich laufen',
     'Flat line ends':
         'Flache Pinselstriche',
     'check for flat ends of lines':
@@ -1193,6 +1199,24 @@ SnapTranslator.dict.de = {
         'ausschalten, um die\nNamen der Kategorien\nin der Palette zu verbergen',
     'check to show\ncategory names\nin the palette':
         'einschalten, umd die\nNamen der Kategorien\nin der Palette anzuzeigen',
+    'Show buttons':
+        'Knöpfe anzeigen',
+    'uncheck to hide buttons\nin the palette':
+        'ausschalten, um Knöpfe in\nder Palette zu verbergen',
+    'check to show buttons\nin the palette':
+        'einschalten, um Knöpfe in\nder Palette anzuzeigen',
+    'HSL pen color model':
+        'HSL Farbmodell',
+     'uncheck to switch pen colors\nand graphic effects to HSV':
+        'ausschalten, um das Farbmodell\nfür den Malstift und die Grafikeffekte\nauf HSV zurückzusetzen',
+    'check to switch pen colors\nand graphic effects to HSL':
+        'einschalten, um das Farbmodell\nfür den Malstift und die Grafikeffekte\nauf HSL zu setzen',
+    'Disable click-to-run':
+        'Block-Klicks deaktivieren',
+    'uncheck to enable\ndirectly running blocks\nby clicking on them':
+        'ausschhalten, um direktes Ausführen\nvon Blöcken durch Anklicken\nzu ermöglichen',
+    'check to disable\ndirectly running blocks\nby clicking on them':
+        'einschhalten, um direktes Ausführen\nvon Blöcken durch Anklicken\nzu verhindern',
 
     // inputs
     'with inputs':
@@ -1805,6 +1829,8 @@ SnapTranslator.dict.de = {
     'saturation':
         'Sättigung',
     'brightness':
+        'Helligkeit',
+    'lightness':
         'Helligkeit',
     'transparency':
         'Transparenz',

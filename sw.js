@@ -1,4 +1,4 @@
-var snapVersion = '7-dev211103'
+var snapVersion = '7.0.2 - dev -'
 
 var cacheName = 'snap-pwa',
     filesToCache = [
@@ -102,6 +102,8 @@ var cacheName = 'snap-pwa',
         'libraries/pixel_module.xml',
         'libraries/schemeNumber.js',
         'libraries/serial_module.xml',
+        'libraries/signada.js',
+        'libraries/signada.xml',
         'libraries/speech_module.xml',
         'libraries/stream-tools.xml',
         'libraries/strings.xml',

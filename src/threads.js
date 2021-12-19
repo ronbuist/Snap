@@ -60,11 +60,11 @@ IDE_Morph, ArgLabelMorph, localize, XML_Element, hex_sha512, TableDialogMorph,
 StageMorph, SpriteMorph, StagePrompterMorph, Note, modules, isString, copy, Map,
 isNil, WatcherMorph, List, ListWatcherMorph, alert, console, TableMorph, BLACK,
 TableFrameMorph, ColorSlotMorph, isSnapObject, newCanvas, Symbol, SVG_Costume,
-SnapExtensions, AlignmentMorph, TextMorph, Cloud*/
+SnapExtensions, AlignmentMorph, TextMorph, Cloud, HatBlockMorph*/
 
 /*jshint esversion: 6*/
 
-modules.threads = '2021-October-22';
+modules.threads = '2021-December-15';
 
 var ThreadManager;
 var Process;
@@ -87,8 +87,14 @@ const NONNUMBERS = [true, false, ''];
 })();
 
 function snapEquals(a, b) {
-    if (a instanceof List || (b instanceof List)) {
-        if (a instanceof List && (b instanceof List)) {
+    // nil
+    if (isNil(a) || isNil(b)) {
+        return a === b;
+    }
+
+    // lists, functions and blocks
+    if (a.equalTo || b.equalTo) {
+        if (a.constructor.name === b.constructor.name) {
             return a.equalTo(b);
         }
         return false;
@@ -194,13 +200,27 @@ function ThreadManager() {
 }
 
 ThreadManager.prototype.pauseCustomHatBlocks = false;
+ThreadManager.prototype.disableClickToRun = false;
 
 ThreadManager.prototype.toggleProcess = function (block, receiver) {
+    if (this.disableClickToRun) {
+        return;
+    }
     var active = this.findProcess(block, receiver);
     if (active) {
         active.stop();
     } else {
-        return this.startProcess(block, receiver, null, null, null, true);
+        return this.startProcess(
+            block,
+            receiver,
+            null,
+            null,
+            null,
+            true, // isClicked
+            null,
+            null,
+            this.clickFrameFor(block) // for upvars declared inside hat blocks
+        );
     }
 };
 
@@ -490,6 +510,24 @@ ThreadManager.prototype.toggleSingleStepping = function () {
     }
 };
 
+ThreadManager.prototype.clickFrameFor = function (block) {
+    // private - answer a variable frame or null containing upvar declarations
+    // in certain hat blocks if the user manually clicks on them
+    var name, frame;
+    if (block instanceof HatBlockMorph) {
+        if (block.selector === 'receiveKey' ||
+                block.selector === 'receiveMessage') {
+            name = block.inputs()[1].evaluate()[0];
+            if (name) {
+                frame = new VariableFrame();
+                frame.addVar(name, '');
+                return frame;
+            }
+        }
+    }
+    return null;
+};
+
 // Process /////////////////////////////////////////////////////////////
 
 /*
@@ -560,11 +598,11 @@ Process.prototype = {};
 Process.prototype.constructor = Process;
 Process.prototype.timeout = 500; // msecs after which to force yield
 Process.prototype.isCatchingErrors = true;
-Process.prototype.enableHyperOps = true; // experimental hyper operations
+Process.prototype.enableHyperOps = true;
 Process.prototype.enableLiveCoding = false; // experimental
-Process.prototype.enableSingleStepping = false; // experimental
+Process.prototype.enableSingleStepping = false;
 Process.prototype.enableCompiling = false; // experimental
-Process.prototype.flashTime = 0; // experimental
+Process.prototype.flashTime = 0;
 Process.prototype.enableJS = true;
 
 function Process(topBlock, receiver, onComplete, yieldFirst) {
@@ -593,8 +631,8 @@ function Process(topBlock, receiver, onComplete, yieldFirst) {
     this.exportResult = false;
     this.onComplete = onComplete || null;
     this.procedureCount = 0;
-    this.flashingContext = null; // experimental, for single-stepping
-    this.isInterrupted = false; // experimental, for single-stepping
+    this.flashingContext = null; // for single-stepping
+    this.isInterrupted = false; // for single-stepping
     this.canBroadcast = true; // used to control "when I am stopped"
 
     if (topBlock) {
@@ -1575,7 +1613,7 @@ Process.prototype.evaluateCustomBlock = function () {
 
     outer.variables.parentFrame = block.variables;
 
-    // block (instance) var support, experimental:
+    // block (instance) var support:
     // only splice in block vars if any are defined, because block vars
     // can cause race conditions in global block definitions that
     // access sprite-local variables at the same time.
@@ -1861,7 +1899,7 @@ Process.prototype.doDeleteAttr = function (attrName) {
     }
 };
 
-// experimental message passing primitives
+// message passing primitives
 
 Process.prototype.doTellTo = function (sprite, context, args) {
     this.doRun(
@@ -1996,7 +2034,7 @@ Process.prototype.reportListItem = function (index, list) {
     return list.at(index);
 };
 
-// Process - experimental tabular list ops
+// Process - tabular list ops
 
 Process.prototype.reportTranspose = function (list) {
     this.assertType(list, 'list');
@@ -2415,7 +2453,8 @@ Process.prototype.doStopOthers = function (choice) {
                 break;
             case 'other scripts in sprite':
                 stage.threads.stopAllForReceiver(
-                    this.homeContext.receiver,
+                    this.context.outerContext.receiver,
+                    // this.homeContext.receiver,
                     this
                 );
                 break;
@@ -2441,9 +2480,6 @@ Process.prototype.doWarp = function (body) {
                 this.homeContext.receiver.startWarp();
             }
             stage = this.homeContext.receiver.parentThatIsA(StageMorph);
-            if (stage) {
-                stage.fps = 0; // variable frame rate
-            }
         }
 
         // this.pushContext('doYield'); // no longer needed in Morphic2
@@ -2471,9 +2507,6 @@ Process.prototype.doStopWarping = function () {
             this.homeContext.receiver.endWarp();
         }
         stage = this.homeContext.receiver.parentThatIsA(StageMorph);
-        if (stage) {
-            stage.fps = stage.frameRate; //  back to fixed frame rate
-        }
     }
 };
 
@@ -3668,6 +3701,11 @@ Process.prototype.doBroadcast = function (message, receivers) {
         return [];
     }
 
+    // remove all clones when the green flag event is broadcast to all
+    if (msg === '__shout__go__' && target === 'all') {
+        stage.removeAllClones();
+    }
+
     // determine the receivers
     thisObj = this.blockReceiver();
     if (target === 'all') {
@@ -4250,9 +4288,23 @@ Process.prototype.reportJoin = function (a, b) {
 
 Process.prototype.reportJoinWords = function (aList) {
     if (aList instanceof List) {
+        if (this.isAST(aList)) {
+            return this.assemble(aList);
+        }
         return aList.asText();
     }
     return (aList || '').toString();
+};
+
+Process.prototype.isAST = function (aList) {
+    var first = aList.at(1);
+    if (first instanceof Context) {
+        return true;
+    }
+    if (first instanceof List) {
+        return first.at(1) instanceof Context;
+    }
+    return false;
 };
 
 // Process string ops - hyper-monadic/dyadic
@@ -4292,15 +4344,16 @@ Process.prototype.reportStringSize = function (data) {
 };
 
 Process.prototype.reportUnicode = function (string) {
-    var str;
+    var str, unicodeList;
 
     if (this.enableHyperOps) {
         if (string instanceof List) {
             return string.map(each => this.reportUnicode(each));
         }
         str = isNil(string) ? '\u0000' : string.toString();
-        if (str.length > 1) {
-            return this.reportUnicode(new List(str.split('')));
+        unicodeList = Array.from(str);
+        if (unicodeList.length > 1) {
+            return this.reportUnicode(new List(unicodeList));
         }
     } else {
         str = isNil(string) ? '\u0000' : string.toString();
@@ -4327,6 +4380,10 @@ Process.prototype.reportUnicodeAsLetter = function (num) {
 };
 
 Process.prototype.reportTextSplit = function (string, delimiter) {
+    if (this.inputOption(delimiter) === 'blocks') {
+        this.assertType(string, ['command', 'reporter', 'predicate']);
+        return string.components();
+    }
     return this.hyperDyadic(
         (str, delim) => this.reportBasicTextSplit(str, delim),
         string,
@@ -4364,9 +4421,9 @@ Process.prototype.reportBasicTextSplit = function (string, delimiter) {
         str = str.trim();
         del = /\s+/;
         break;
+    case '':
     case 'letter':
-        del = '';
-        break;
+        return new List(Array.from(str));
     case 'csv':
         return this.parseCSV(string);
     case 'json':
@@ -4378,7 +4435,7 @@ Process.prototype.reportBasicTextSplit = function (string, delimiter) {
         return this.parseCSVfields(string);
     */
     default:
-        del = isNil(delimiter) ? '' : delimiter.toString();
+        del = delimiter.toString();
     }
     return new List(str.split(del));
 };
@@ -4495,6 +4552,27 @@ Process.prototype.parseJSON = function (string) {
     }
 
     return listify(JSON.parse(string));
+};
+
+// Process syntax analysis
+
+Process.prototype.assemble = function (blocks) {
+    var first;
+    if (!(blocks instanceof List)) {
+        return blocks;
+    }
+    first = blocks.at(1);
+    if (first instanceof Context) {
+        return first.copyWithInputs(
+            blocks.cdr().map(each => this.assemble(each))
+        );
+    }
+    if (blocks.isEmpty()) {
+        return blocks;
+    }
+    return blocks.map(each => this.assemble(each)).itemsArray().reduce(
+        (a, b) => a.copyWithNext(b)
+    );
 };
 
 // Process debugging
@@ -4676,7 +4754,7 @@ Process.prototype.goToLayer = function (name) {
 
 // Process scene primitives
 
-Process.prototype.doSwitchToScene = function (id, transmission) {
+Process.prototype.doSwitchToScene = function (id, transmission) { // +++
     var rcvr = this.blockReceiver(),
         idx = 0,
         message = this.inputOption(transmission.at(1)),
@@ -4747,26 +4825,43 @@ Process.prototype.doSwitchToScene = function (id, transmission) {
 
 // Process color primitives
 
-Process.prototype.setHSVA = function (name, num) {
-    var options = ['hue', 'saturation', 'brightness', 'transparency'];
-    this.blockReceiver().setColorComponentHSVA(
-        options.indexOf(this.inputOption(name)),
+Process.prototype.setColorDimension = function (name, num) {
+    var options = ['hue', 'saturation', 'brightness', 'transparency'],
+        choice = this.inputOption(name);
+    if (choice === 'r-g-b(-a)') {
+        this.blockReceiver().setColorRGBA(num);
+        return;
+    }
+    this.blockReceiver().setColorDimension(
+        options.indexOf(choice),
         +num
     );
 };
 
-Process.prototype.changeHSVA = function (name, num) {
-    var options = ['hue', 'saturation', 'brightness', 'transparency'];
-    this.blockReceiver().changeColorComponentHSVA(
-        options.indexOf(this.inputOption(name)),
+Process.prototype.changeColorDimension = function (name, num) {
+    var options = ['hue', 'saturation', 'brightness', 'transparency'],
+        choice = this.inputOption(name);
+    if (choice === 'r-g-b(-a)') {
+        this.blockReceiver().changeColorRGBA(num);
+        return;
+    }
+    this.blockReceiver().changeColorDimension(
+        options.indexOf(choice),
         +num
     );
 };
 
-Process.prototype.setPenHSVA = Process.prototype.setHSVA;
-Process.prototype.changePenHSVA = Process.prototype.changeHSVA;
-Process.prototype.setBackgroundHSVA = Process.prototype.setHSVA;
-Process.prototype.changeBackgroundHSVA = Process.prototype.changeHSVA;
+Process.prototype.setPenColorDimension =
+    Process.prototype.setColorDimension;
+
+Process.prototype.changePenColorDimension =
+    Process.prototype.changeColorDimension;
+
+Process.prototype.setBackgroundColorDimension =
+    Process.prototype.setColorDimension;
+
+Process.prototype.changeBackgroundColorDimension =
+    Process.prototype.changeColorDimension;
 
 // Process cutting & pasting primitives
 
@@ -4921,9 +5016,9 @@ Process.prototype.reportAspect = function (aspect, location) {
     // ----------------
     // left input (aspect):
     //
-    //      'hue'           - hsv HUE on a scale of 0 - 100
-    //      'saturation'    - hsv SATURATION on a scale of 0 - 100
-    //      'brightness'    - hsv VALUE on a scale of 0 - 100
+    //      'hue'           - hsl HUE on a scale of 0 - 100
+    //      'saturation'    - hsl SATURATION on a scale of 0 - 100
+    //      'brightness'    - hsl BRIGHTNESS on a scale of 0 - 100
     //      'transparency'  - rgba ALPHA on a reversed (!) scale of 0 - 100
     //      'r-g-b-a'       - list of rgba values on a scale of 0 - 255 each
     //      'sprites'       - a list of sprites at the location, empty if none
@@ -5016,7 +5111,7 @@ Process.prototype.reportAspect = function (aspect, location) {
     if (idx === 3) {
         return (1 - clr.a) * 100;
     }
-    return clr.hsv()[idx] * 100;
+    return clr[SpriteMorph.prototype.penColorModel]()[idx] * 100;
 };
 
 Process.prototype.colorAtSprite = function (sprite) {
@@ -5351,6 +5446,41 @@ Process.prototype.reportDirectionTo = function (name) {
     return 0;
 };
 
+Process.prototype.reportBlockAttribute = function (attribute, block) {
+    // hyper-dyadic
+    // note: attributes in the left slot
+    // can only be queried via the dropdown menu and are, therefore, not
+    // reachable as dyadic inputs
+    return this.hyperDyadic(
+        (att, obj) => this.reportBasicBlockAttribute(att, obj),
+        attribute,
+        block
+    );
+};
+
+Process.prototype.reportBasicBlockAttribute = function (attribute, block) {
+    var choice = this.inputOption(attribute),
+        expr;
+    this.assertType(block, ['command', 'reporter', 'predicate']);
+    expr = block.expression;
+    switch (choice) {
+    case 'definition':
+        if (expr.isCustomBlock) {
+            if (expr.isGlobal) {
+                return expr.definition.body || new Context();
+            }
+            return this.blockReceiver().getMethod(expr.semanticSpec).body ||
+                new Context();
+        }
+        return new Context();
+    case 'custom?':
+        return expr ? !!expr.isCustomBlock : false;
+    case 'global?':
+        return (expr && expr.isCustomBlock) ? !!expr.isGlobal : true;
+    }
+    return '';
+};
+
 Process.prototype.reportAttributeOf = function (attribute, name) {
     // hyper-dyadic
     // note: specifying strings in the left input only accesses
@@ -5527,6 +5657,40 @@ Process.prototype.reportGet = function (query) {
             return thisObj.name;
         case 'stage':
             return thisObj.parentThatIsA(StageMorph);
+        case 'scripts':
+            return new List(
+                thisObj.scripts.children.filter(
+                    each => each instanceof BlockMorph
+                ).map(
+                    each => each.fullCopy().reify()
+                )
+            );
+        case 'blocks': // palette unoordered without inherited methods
+            return new List(
+                thisObj.parentThatIsA(StageMorph).globalBlocks.concat(
+                    thisObj.allBlocks(true)
+                ).filter(
+                    def => !def.isHelper
+                ).map(
+                    def => def.blockInstance().reify()
+                ).concat(
+                    SpriteMorph.prototype.categories.reduce(
+                        (blocks, category) => blocks.concat(
+                            thisObj.getPrimitiveTemplates(
+                                category
+                            ).filter(
+                                each => each instanceof BlockMorph &&
+                                    !(each instanceof HatBlockMorph)
+                            ).map(block => {
+                                let instance = block.fullCopy();
+                                instance.isTemplate = false;
+                                return instance.reify();
+                            })
+                        ),
+                        []
+                    )
+                )
+            );
         case 'costume':
             return thisObj.costume;
         case 'costumes':
@@ -5578,7 +5742,7 @@ Process.prototype.reportObject = function (name) {
 };
 
 Process.prototype.doSet = function (attribute, value) {
-    // experimental, manipulate sprites' attributes
+    // manipulate sprites' attributes
     var name, rcvr, ide;
     rcvr = this.blockReceiver();
     this.assertAlive(rcvr);
@@ -6838,7 +7002,7 @@ Context.prototype.image = function () {
 
     // otherwise show an empty ring
     ring.color = SpriteMorph.prototype.blockColor.other;
-    ring.setSpec('%rc %ringparms');
+    ring.setSpec('%rr %ringparms');
 
     // also show my inputs, unless I'm a continuation
     if (!this.isContinuation) {
@@ -6936,7 +7100,7 @@ Context.prototype.stopMusic = function () {
 // Context single-stepping:
 
 Context.prototype.lastFlashable = function () {
-    // for experimental single-stepping when pausing
+    // for single-stepping when pausing
     if (this.expression instanceof SyntaxElementMorph &&
             !(this.expression instanceof CommandSlotMorph)) {
         return this;
@@ -6963,6 +7127,46 @@ Context.prototype.isInCustomBlock = function () {
         return this.parentContext.isInCustomBlock();
     }
     return false;
+};
+
+// Context syntax analysis
+
+Context.prototype.components = function () {
+    var expr = this.expression;
+    if (expr && expr.components) {
+        expr = expr.components(this.inputs.slice());
+    } else {
+        expr = new Context();
+        expr.inputs = this.inputs.slice();
+    }
+    return expr instanceof Context ? new List([expr]) : expr;
+};
+
+Context.prototype.equalTo = function (other) {
+    var c1 = this.components(),
+        c2 = other.components();
+    if (snapEquals(c1.cdr(), c2.cdr())) {
+        if (this.expression && this.expression.length === 1 &&
+                other.expression && other.expression.length === 1) {
+            return snapEquals(this.expression[0], other.expression[0]);
+        }
+        return snapEquals(this.expression, other.expression);
+    }
+    return false;
+};
+
+Context.prototype.copyWithInputs = function (inputs) {
+    return this.expression ?
+        this.expression.copyWithInputs(inputs, this.inputs.slice())
+        : this;
+};
+
+Context.prototype.copyWithNext = function (next) {
+    return this.expression.copyWithNext(next.expression, this.inputs.slice());
+};
+
+Context.prototype.updateEmptySlots = function () {
+    this.emptySlots = this.expression.markEmptySlots();
 };
 
 // Variable /////////////////////////////////////////////////////////////////

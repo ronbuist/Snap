@@ -87,7 +87,7 @@ BlockVisibilityDialogMorph*/
 
 /*jshint esversion: 6*/
 
-modules.objects = '2021-October-29';
+modules.objects = '2021-December-18';
 
 var SpriteMorph;
 var StageMorph;
@@ -185,6 +185,7 @@ SpriteMorph.prototype.enableNesting = true;
 SpriteMorph.prototype.enableFirstClass = true;
 SpriteMorph.prototype.showingExtensions = false;
 SpriteMorph.prototype.useFlatLineEnds = false;
+SpriteMorph.prototype.penColorModel = 'hsv'; // or 'hsl'
 SpriteMorph.prototype.highlightColor = new Color(250, 200, 130);
 SpriteMorph.prototype.highlightBorder = 8;
 
@@ -630,18 +631,18 @@ SpriteMorph.prototype.initBlocks = function () {
             category: 'pen',
             spec: 'set pen color to %clr'
         },
-        setPenHSVA: {
+        setPenColorDimension: {
             only: SpriteMorph,
             type: 'command',
             category: 'pen',
-            spec: 'set pen %hsva to %n',
+            spec: 'set pen %clrdim to %n',
             defaults: [['hue'], 50]
         },
-        changePenHSVA: {
+        changePenColorDimension: {
             only: SpriteMorph,
             type: 'command',
             category: 'pen',
-            spec: 'change pen %hsva by %n',
+            spec: 'change pen %clrdim by %n',
             defaults: [['hue'], 10]
         },
         getPenAttribute: {
@@ -656,18 +657,18 @@ SpriteMorph.prototype.initBlocks = function () {
             category: 'pen',
             spec: 'set background color to %clr'
         },
-        setBackgroundHSVA: {
+        setBackgroundColorDimension: {
             only: StageMorph,
             type: 'command',
             category: 'pen',
-            spec: 'set background %hsva to %n',
+            spec: 'set background %clrdim to %n',
             defaults: [['hue'], 50]
         },
-        changeBackgroundHSVA: {
+        changeBackgroundColorDimension: {
             only: StageMorph,
             type: 'command',
             category: 'pen',
-            spec: 'change background %hsva by %n',
+            spec: 'change background %clrdim by %n',
             defaults: [['hue'], 10]
         },
         changeSize: {
@@ -1069,6 +1070,12 @@ SpriteMorph.prototype.initBlocks = function () {
             category: 'sensing',
             spec: 'microphone %audio',
             defaults: [['volume']]
+        },
+        reportBlockAttribute: {
+            type: 'reporter',
+            category: 'sensing',
+            spec: '%block of block %repRing',
+            defaults: [['definition']]
         },
 
         // Operators
@@ -1608,24 +1615,36 @@ SpriteMorph.prototype.initBlockMigrations = function () {
             inputs: [['front']]
         },
         setHue: {
-            selector: 'setPenHSVA',
+            selector: 'setPenColorDimension',
             inputs: [['hue']],
             offset: 1
         },
         setBrightness: {
-            selector: 'setPenHSVA',
+            selector: 'setPenColorDimension',
             inputs: [['brightness']],
             offset: 1
         },
+        setPenHSVA: {
+            selector: 'setPenColorDimension'
+        },
         changeHue: {
-            selector: 'changePenHSVA',
+            selector: 'changePenColorDimension',
             inputs: [['hue']],
             offset: 1
         },
         changeBrightness: {
-            selector: 'changePenHSVA',
+            selector: 'changePenColorDimension',
             inputs: [['brightness']],
             offset: 1
+        },
+        changePenHSVA: {
+            selector: 'changePenColorDimension'
+        },
+        setBackgroundHSVA: {
+            selector: 'setBackgroundColorDimension'
+        },
+        changeBackgroundHSVA: {
+            selector: 'changeBackgroundColorDimension'
         },
         reportIsFastTracking: {
             selector: 'reportGlobalFlag',
@@ -1654,8 +1673,7 @@ SpriteMorph.prototype.initBlockMigrations = function () {
         },
         doSend: {
             selector: 'doBroadcast',
-            expand: 1,
-            offset: 0
+            expand: 1
         }
     };
 };
@@ -1719,10 +1737,10 @@ SpriteMorph.prototype.blockAlternatives = {
     doPasteOn: ['doCutFrom'],
     doCutFrom: ['doPasteOn'],
     doStamp: ['clear', 'down', 'up'],
-    setPenHSVA: ['changePenHSVA'],
-    changePenHSVA: ['setPenHSVA'],
-    setBackgroundHSVA: ['changeBackgroundHSVA'],
-    changeBackgroundHSVA: ['setBackgroundHSVA'],
+    setPenColorDimension: ['changePenColorDimension'],
+    changePenColorDimension: ['setPenColorDimension'],
+    setBackgroundColorDimension: ['changeBackgroundColorDimension'],
+    changeBackgroundColorDimension: ['setBackgroundColorDimension'],
     changeSize: ['setSize'],
     setSize: ['changeSize'],
 
@@ -1843,8 +1861,8 @@ SpriteMorph.prototype.init = function (globals) {
     // frequency player, experimental
     this.freqPlayer = null; // Note, to be lazily initialized
 
-    // pen hsv color support
-    this.cachedHSV = [0, 0, 0]; // not serialized
+    // pen color dimensions support
+    this.cachedColorDimensions = [0, 0, 0]; // not serialized
 
     // only temporarily for serialization
     this.inheritedMethodsCache = [];
@@ -1858,6 +1876,7 @@ SpriteMorph.prototype.init = function (globals) {
 
     this.primitivesCache = {}; // not to be serialized (!)
     this.paletteCache = {}; // not to be serialized (!)
+    this.categoriesCache = null; // not to be serialized (!)
     this.rotationOffset = ZERO; // not to be serialized (!)
     this.idx = 0; // not to be serialized (!) - used for de-serialization
 
@@ -1893,7 +1912,7 @@ SpriteMorph.prototype.init = function (globals) {
 
     this.isCachingImage = true;
     this.isFreeForm = true;
-    this.cachedHSV = this.color.hsv();
+    this.cachedColorDimensions = this.color[this.penColorModel]();
     this.isDraggable = true;
     this.isDown = false;
     this.heading = 90;
@@ -1923,8 +1942,9 @@ SpriteMorph.prototype.fullCopy = function (forClone) {
     c.freqPlayer = null;
     c.primitivesCache = {};
     c.paletteCache = {};
+    c.categoriesCache = null;
     c.imageData = {};
-    c.cachedHSV = c.color.hsv();
+    c.cachedColorDimensions = c.color[this.penColorModel]();
     arr = [];
     this.inheritedAttributes.forEach(att => arr.push(att));
     c.inheritedAttributes = arr;
@@ -2496,8 +2516,8 @@ SpriteMorph.prototype.blockTemplates = function (
         blocks.push(block('getPenDown', this.inheritsAttribute('pen down?')));
         blocks.push('-');
         blocks.push(block('setColor'));
-        blocks.push(block('changePenHSVA'));
-        blocks.push(block('setPenHSVA'));
+        blocks.push(block('changePenColorDimension'));
+        blocks.push(block('setPenColorDimension'));
         blocks.push(block('getPenAttribute'));
         blocks.push('-');
         blocks.push(block('changeSize'));
@@ -2609,6 +2629,7 @@ SpriteMorph.prototype.blockTemplates = function (
         blocks.push(block('doSetGlobalFlag'));
         blocks.push('-');
         blocks.push(block('reportDate'));
+        blocks.push(block('reportBlockAttribute'));
 
         // for debugging: ///////////////
         if (devMode) {
@@ -2945,6 +2966,7 @@ SpriteMorph.prototype.makeBlock = function () {
                     this.customBlocks.push(definition);
                 }
                 ide.flushPaletteCache();
+                ide.categories.refreshEmpty();
                 ide.refreshPalette();
                 ide.recordUnsavedChanges();
                 new BlockEditorMorph(definition, this).popUp();
@@ -2988,8 +3010,10 @@ SpriteMorph.prototype.palette = function (category) {
 SpriteMorph.prototype.freshPalette = function (category) {
     var myself = this,
         palette = new ScrollFrameMorph(null, null, this.sliderColor),
-        showCategories,
         unit = SyntaxElementMorph.prototype.fontSize,
+        ide,
+        showCategories,
+        showButtons,
         x = 0,
         y = 5,
         ry = 0,
@@ -3075,7 +3099,9 @@ SpriteMorph.prototype.freshPalette = function (category) {
     if (category === 'unified') {
         // In a Unified Palette custom blocks appear following each category,
         // but there is only 1 make a block button (at the end).
-        showCategories = this.parentThatIsA(IDE_Morph).scene.showCategories;
+        ide = this.parentThatIsA(IDE_Morph);
+        showCategories = ide.scene.showCategories;
+        showButtons = ide.scene.showPaletteButtons;
         blocks = SpriteMorph.prototype.allCategories().reduce(
             (blocks, category) => {
                 let header = [this.categoryText(category), '-'],
@@ -3086,9 +3112,17 @@ SpriteMorph.prototype.freshPalette = function (category) {
                         (primitives.some(item =>
                             item instanceof BlockMorph) || customs.length);
 
+                // hide category names
                 if (!showCategories && category !== 'variables') {
                     primitives = primitives.filter(each =>
                         each !== '-' && each !== '=');
+                }
+
+                // hide "make / delete a variable" buttons
+                if (!showButtons && category === 'variables') {
+                    primitives = primitives.filter(each =>
+                        !(each instanceof PushButtonMorph &&
+                            !(each instanceof ToggleMorph)));
                 }
 
                 return blocks.concat(
@@ -3105,8 +3139,11 @@ SpriteMorph.prototype.freshPalette = function (category) {
         // ensure we do not modify the cached array
         blocks = this.getPrimitiveTemplates(category).slice();
     }
-    blocks.push('=');
-    blocks.push(this.makeBlockButton(category));
+
+    if (category !== 'unified' || showButtons) {
+        blocks.push('=');
+        blocks.push(this.makeBlockButton(category));
+    }
 
     if (category !== 'unified') {
         blocks.push('=');
@@ -3159,7 +3196,7 @@ SpriteMorph.prototype.freshPalette = function (category) {
 // SpriteMorph utilities for showing & hiding blocks in the palette
 
 SpriteMorph.prototype.allPaletteBlocks = function () {
-    // private - only to be used for showing & hiding blocks im the palette
+    // private - only to be used for showing & hiding blocks in the palette
     var blocks = SpriteMorph.prototype.allCategories().reduce(
         (blocks, category) => {
             let primitives = this.blockTemplates(category, true),
@@ -3175,6 +3212,7 @@ SpriteMorph.prototype.allPaletteBlocks = function () {
 };
 
 SpriteMorph.prototype.isHidingBlock = function (aBlock) {
+    var frame;
     if (aBlock.isCustomBlock) {
         return (
             aBlock.isGlobal ? aBlock.definition
@@ -3182,9 +3220,11 @@ SpriteMorph.prototype.isHidingBlock = function (aBlock) {
         ).isHelper;
     }
     if (aBlock.selector === 'reportGetVar') {
-        return this.variables.find(
-            aBlock.blockSpec
-        ).vars[aBlock.blockSpec].isHidden;
+        frame = this.variables.silentFind(aBlock.blockSpec);
+        if (!frame) {
+            return false;
+        }
+        return frame.vars[aBlock.blockSpec].isHidden;
     }
     return StageMorph.prototype.hiddenPrimitives[aBlock.selector] === true;
 };
@@ -3242,6 +3282,21 @@ SpriteMorph.prototype.changeBlockVisibility = function (aBlock, hideIt, quick) {
     if (cat === 'lists') {cat = 'variables'; }
     ide.flushBlocksCache(cat);
     ide.refreshPalette();
+};
+
+SpriteMorph.prototype.emptyCategories = function () {
+    // return a dictionary that indicates for each category whether
+    // it has any shown blocks in it (true) or is empty (false)
+    var hasBlocks = (any) => any instanceof BlockMorph &&
+            !this.isHidingBlock(any);
+    if (this.categoriesCache === null) {
+        this.categoriesCache = {};
+        SpriteMorph.prototype.allCategories().forEach(category =>
+            this.categoriesCache[category] =
+                this.getPrimitiveTemplates(category).some(hasBlocks) ||
+                this.customBlockTemplatesForCategory(category).some(hasBlocks));
+    }
+    return this.categoriesCache;
 };
 
 // SpriteMorph blocks searching
@@ -4416,7 +4471,7 @@ SpriteMorph.prototype.reportShown = function () {
 
 // SpriteMorph pen color
 
-SpriteMorph.prototype.setColorComponentHSVA = function (idx, num) {
+SpriteMorph.prototype.setColorDimension = function (idx, num) {
     var x = this.xPosition(),
         y = this.yPosition(),
         n = +num;
@@ -4433,8 +4488,11 @@ SpriteMorph.prototype.setColorComponentHSVA = function (idx, num) {
     if (idx === 3) {
         this.color.a = 1 - n / 100;
     } else {
-        this.cachedHSV[idx] = n / 100;
-        this.color.set_hsv.apply(this.color, this.cachedHSV);
+        this.cachedColorDimensions[idx] = n / 100;
+        this.color['set_' + this.penColorModel].apply(
+            this.color,
+            this.cachedColorDimensions
+        );
     }
     if (!this.costume) {
         this.rerender();
@@ -4442,19 +4500,151 @@ SpriteMorph.prototype.setColorComponentHSVA = function (idx, num) {
     this.gotoXY(x, y);
 };
 
-SpriteMorph.prototype.getColorComponentHSLA = function (idx) {
+SpriteMorph.prototype.getColorDimension = function (idx) {
     idx = +idx;
     if (idx === 3) {
         return (1 - this.color.a) * 100;
     }
-    return (this.cachedHSV[idx] || 0) * 100;
+    return (this.cachedColorDimensions[idx] || 0) * 100;
 };
 
-SpriteMorph.prototype.changeColorComponentHSVA = function (idx, delta) {
-    this.setColorComponentHSVA(
+SpriteMorph.prototype.changeColorDimension = function (idx, delta) {
+    this.setColorDimension(
         idx,
-        this.getColorComponentHSLA(idx) + (+delta || 0)
+        this.getColorDimension(idx) + (+delta || 0)
     );
+};
+
+SpriteMorph.prototype.setColorRGBA = function (dta) {
+    // dta can be one of the following:
+    // - a 4 item list representing r-g-b-a each on a scale of 0-255
+    // - a 3 item list representing r-g-b leaving a unchanged
+    // - a 1 item list representing greyscale from 0-255 leaving alpha unchanged
+    // - a 2 item list representing greyscale and alpha each from 0-255
+    // - a number representing greyscale from 0-255 leaving alpha unchanged
+    var clr = this.color.copy(),
+        num;
+    if (dta instanceof List) {
+        switch (dta.length()) {
+        case 1:
+            num = Math.max(0, Math.min(+(dta.at(1)), 255));
+            if (isNaN(num)) {return; }
+            clr.r = num;
+            clr.g = num;
+            clr.b = num;
+            break;
+        case 2:
+            num = Math.max(0, Math.min(+(dta.at(1)), 255));
+            if (isNaN(num)) {return; }
+            clr.r = num;
+            clr.g = num;
+            clr.b = num;
+            num = Math.max(0, Math.min(+(dta.at(2)), 255));
+            if (isNaN(num)) {return; }
+            clr.a = num / 255;
+            break;
+        case 3:
+            num = Math.max(0, Math.min(+(dta.at(1)), 255));
+            if (isNaN(num)) {return; }
+            clr.r = num;
+            num = Math.max(0, Math.min(+(dta.at(2)), 255));
+            if (isNaN(num)) {return; }
+            clr.g = num;
+            num = Math.max(0, Math.min(+(dta.at(3)), 255));
+            if (isNaN(num)) {return; }
+            clr.b = num;
+            break;
+        case 4:
+            num = Math.max(0, Math.min(+(dta.at(1)), 255));
+            if (isNaN(num)) {return; }
+            clr.r = num;
+            num = Math.max(0, Math.min(+(dta.at(2)), 255));
+            if (isNaN(num)) {return; }
+            clr.g = num;
+            num = Math.max(0, Math.min(+(dta.at(3)), 255));
+            if (isNaN(num)) {return; }
+            clr.b = num;
+            num = Math.max(0, Math.min(+(dta.at(4)), 255));
+            if (isNaN(num)) {return; }
+            clr.a = num / 255;
+            break;
+        default:
+            return;
+        }
+    } else {
+        num = Math.max(0, Math.min(+dta, 255));
+        if (isNaN(num)) {return; }
+        clr.r = num;
+        clr.g = num;
+        clr.b = num;
+    }
+    this.setColor(clr);
+};
+
+SpriteMorph.prototype.changeColorRGBA = function (dta) {
+    // dta can be one of the following:
+    // - a 4 item list representing r-g-b-a each on a scale of 0-255
+    // - a 3 item list representing r-g-b leaving a unchanged
+    // - a 1 item list representing greyscale from 0-255 leaving alpha unchanged
+    // - a 2 item list representing greyscale and alpha each from 0-255
+    // - a number representing greyscale from 0-255 leaving alpha unchanged
+    var clr = this.color.copy(),
+        num;
+    if (dta instanceof List) {
+        switch (dta.length()) {
+        case 1:
+            num = +(dta.at(1));
+            if (isNaN(num)) {return; }
+            clr.r = Math.max(0, Math.min(clr.r + num, 255));
+            clr.g = Math.max(0, Math.min(clr.g + num, 255));
+            clr.b = Math.max(0, Math.min(clr.b + num, 255));
+            break;
+        case 2:
+            num = +(dta.at(1));
+            if (isNaN(num)) {return; }
+            clr.r = Math.max(0, Math.min(clr.r + num, 255));
+            clr.g = Math.max(0, Math.min(clr.g + num, 255));
+            clr.b = Math.max(0, Math.min(clr.b + num, 255));
+            num = +(dta.at(2));
+            if (isNaN(num)) {return; }
+            clr.a = Math.max(0, Math.min((clr.a * 255) + num, 255)) / 255;
+            break;
+        case 3:
+            num = +(dta.at(1));
+            if (isNaN(num)) {return; }
+            clr.r = Math.max(0, Math.min(clr.r + num, 255));
+            num = +(dta.at(2));
+            if (isNaN(num)) {return; }
+            clr.g = Math.max(0, Math.min(clr.g + num, 255));
+            num = +(dta.at(3));
+            if (isNaN(num)) {return; }
+            clr.b = Math.max(0, Math.min(clr.b + num, 255));
+            break;
+        case 4:
+            num = +(dta.at(1));
+            if (isNaN(num)) {return; }
+            clr.r = Math.max(0, Math.min(clr.r + num, 255));
+            num = +(dta.at(2));
+            if (isNaN(num)) {return; }
+            clr.g = Math.max(0, Math.min(clr.g + num, 255));
+            num = +(dta.at(3));
+            if (isNaN(num)) {return; }
+            clr.b = Math.max(0, Math.min(clr.b + num, 255));
+            num = +(dta.at(4));
+            if (isNaN(num)) {return; }
+            clr.a = Math.max(0, Math.min((clr.a * 255) + num, 255)) / 255;
+            break;
+        default:
+            return;
+        }
+    } else {
+        num = +dta;
+        if (isNaN(num)) {return; }
+        clr.r = Math.max(0, Math.min(clr.r + num, 255));
+        clr.g = Math.max(0, Math.min(clr.g + num, 255));
+        clr.b = Math.max(0, Math.min(clr.b + num, 255));
+    }
+    this.setColor(clr);
 };
 
 SpriteMorph.prototype.setColor = function (aColor) {
@@ -4466,7 +4656,7 @@ SpriteMorph.prototype.setColor = function (aColor) {
             this.rerender();
             this.silentGotoXY(x, y);
         }
-        this.cachedHSV = this.color.hsv();
+        this.cachedColorDimensions = this.color[this.penColorModel]();
     }
 };
 
@@ -4478,7 +4668,15 @@ SpriteMorph.prototype.getPenAttribute = function (attrib) {
     if (name === 'size') {
         return this.size || 0;
     }
-    return this.getColorComponentHSLA(options.indexOf(name));
+    if (name === 'r-g-b-a') {
+        return new List([
+            this.color.r,
+            this.color.g,
+            this.color.b,
+            Math.round(this.color.a * 255)
+        ]);
+    }
+    return this.getColorDimension(options.indexOf(name));
 };
 
 // SpriteMorph layers
@@ -5144,79 +5342,36 @@ SpriteMorph.prototype.applyGraphicsEffects = function (canvas) {
         return imagedata;
     }
 
-    function transform_HSV(
+    function transform_colorDimensions(
             imagedata,
             hueShift,
             saturationShift,
             brightnessShift
     ) {
-        var pixels, index, l, r, g, b, max, min, span,
-            h, s, v, i, f, p, q, t, newR, newG, newB;
-        pixels = imagedata.data;
-        for (index = 0, l = pixels.length; index < l; index += 4) {
-            r = pixels[index];
-            g = pixels[index + 1];
-            b = pixels[index + 2];
+        var pixels = imagedata.data,
+            l = pixels.length,
+            clr = new Color(),
+            index, dim;
 
-            max = Math.max(r, g, b);
-            min = Math.min(r, g, b);
-            span = max - min;
-            if (span === 0) {
-                h = s = 0;
-            } else {
-                if (max === r) {
-                    h = (60 * (g - b)) / span;
-                } else if (max === g) {
-                    h = 120 + ((60 * (b - r)) / span);
-                } else if (max === b) {
-                    h = 240 + ((60 * (r - g)) / span);
-                }
-                s = (max - min) / max;
+        for (index = 0; index < l; index += 4) {
+
+            clr.r = pixels[index];
+            clr.g = pixels[index + 1];
+            clr.b = pixels[index + 2];
+
+            dim = clr[SpriteMorph.prototype.penColorModel]();
+            dim[0] = dim[0] * 100 + hueShift;
+            if (dim[0] < 0 || dim[0] > 100) { // wrap the hue
+                dim[0] = (dim[0] < 0 ? 100 : 0) + dim[0] % 100;
             }
-            if (h < 0) {
-                h += 360;
-            }
-            v = max / 255;
+            dim[0] = dim[0] / 100;
+            dim[1] = dim[1] + saturationShift / 100;
+            dim[2] = dim[2] + brightnessShift / 100;
 
-            h = (((h + hueShift * 360 / 200) % 360) + 360) % 360;
-            s = Math.max(0, Math.min(s + saturationShift / 100, 1));
-            v = Math.max(0, Math.min(v + brightnessShift / 100, 1));
-
-            i = Math.floor(h / 60);
-            f = (h / 60) - i;
-            p = v * (1 - s);
-            q = v * (1 - (s * f));
-            t = v * (1 - (s * (1 - f)));
-
-            if (i === 0 || i === 6) {
-                newR = v;
-                newG = t;
-                newB = p;
-            } else if (i === 1) {
-                newR = q;
-                newG = v;
-                newB = p;
-            } else if (i === 2) {
-                newR = p;
-                newG = v;
-                newB = t;
-            } else if (i === 3) {
-                newR = p;
-                newG = q;
-                newB = v;
-            } else if (i === 4) {
-                newR = t;
-                newG = p;
-                newB = v;
-            } else if (i === 5) {
-                newR = v;
-                newG = p;
-                newB = q;
-            }
-
-            pixels[index] = newR * 255;
-            pixels[index + 1] = newG * 255;
-            pixels[index + 2] = newB * 255;
+            clr['set_' + SpriteMorph.prototype.penColorModel].apply(clr, dim);
+            pixels[index] = clr.r;
+            pixels[index + 1] = clr.g;
+            pixels[index + 2] = clr.b;
         }
         return imagedata;
     }
@@ -5311,7 +5466,7 @@ SpriteMorph.prototype.applyGraphicsEffects = function (canvas) {
         if (this.graphicsValues.color ||
                 this.graphicsValues.saturation ||
                 this.graphicsValues.brightness) {
-            imagedata = transform_HSV(
+            imagedata = transform_colorDimensions(
                 imagedata,
                 this.graphicsValues.color,
                 this.graphicsValues.saturation,
@@ -5575,6 +5730,12 @@ SpriteMorph.prototype.floodFill = function () {
             Math.floor((height / 2) - this.yPosition()) * width +
             Math.floor(this.xPosition() + (width / 2))
         ],
+        clr = new Color(
+            Math.round(Math.min(Math.max(this.color.r, 0), 255)),
+            Math.round(Math.min(Math.max(this.color.g, 0), 255)),
+            Math.round(Math.min(Math.max(this.color.b, 0), 255)),
+            this.color.a
+        ),
         current,
         src;
 
@@ -5591,10 +5752,10 @@ SpriteMorph.prototype.floodFill = function () {
     }
 
     src = read(stack[0]);
-    if (src[0] === Math.round(this.color.r) &&
-            src[1] === Math.round(this.color.g) &&
-            src[2] === Math.round(this.color.b) &&
-            src[3] === Math.round(this.color.a * 255)) {
+    if (src[0] === clr.r &&
+            src[1] === clr.g &&
+            src[2] === clr.b &&
+            src[3] === Math.round(clr.a * 255)) {
         return;
     }
     while (stack.length > 0) {
@@ -5609,10 +5770,10 @@ SpriteMorph.prototype.floodFill = function () {
                 stack.push(current - width);
             }
         }
-        dta[current * 4] = Math.round(this.color.r);
-        dta[current * 4 + 1] = Math.round(this.color.g);
-        dta[current * 4 + 2] = Math.round(this.color.b);
-        dta[current * 4 + 3] = Math.round(this.color.a * 255);
+        dta[current * 4] = clr.r;
+        dta[current * 4 + 1] = clr.g;
+        dta[current * 4 + 2] = clr.b;
+        dta[current * 4 + 3] = Math.round(clr.a * 255);
     }
     ctx.putImageData(img, 0, 0);
     this.parent.changed();
@@ -5967,6 +6128,7 @@ SpriteMorph.prototype.setRotationCenter = function (absoluteCoordinate) {
     if (!this.costume) {
         throw new Error('setting the rotation center requires a costume');
     }
+    this.shadowAttribute('costumes');
     delta = absoluteCoordinate.subtract(
         new Point(this.xPosition(), this.yPosition())
     ).divideBy(this.scale).rotateBy(radians(90 - this.heading));
@@ -6138,7 +6300,8 @@ SpriteMorph.prototype.allHatBlocksForKey = function (key) {
     return this.scripts.children.filter(morph => {
         if (morph.selector) {
             if (morph.selector === 'receiveKey') {
-                var evt = morph.inputs()[0].evaluate()[0];
+                var choice = morph.inputs()[0].evaluate(),
+                    evt = choice instanceof Array ? choice[0] : choice;
                 return evt === key || evt === 'any key';
             }
         }
@@ -7733,7 +7896,6 @@ StageMorph.uber = FrameMorph.prototype;
 // StageMorph preferences settings
 
 StageMorph.prototype.dimensions = new Point(480, 360); // fallback unscaled ext
-StageMorph.prototype.frameRate = 0; // unscheduled per default
 
 StageMorph.prototype.isCachingPrimitives
     = SpriteMorph.prototype.isCachingPrimitives;
@@ -7793,11 +7955,12 @@ StageMorph.prototype.init = function (globals) {
 
     this.scale = 1; // for display modes, do not persist
 
-    this.cachedHSV = [0, 0, 0]; // for background hsv support, not serialized
+    this.cachedColorDimensions = [0, 0, 0]; // bg color support, not serialized
 
     this.keysPressed = {}; // for handling keyboard events, do not persist
     this.primitivesCache = {}; // not to be serialized (!)
     this.paletteCache = {}; // not to be serialized (!)
+    this.categoriesCache = null; // not to be serialized (!)
     this.lastAnswer = ''; // last user input, do not persist
     this.activeSounds = []; // do not persist
 
@@ -7847,10 +8010,11 @@ StageMorph.prototype.init = function (globals) {
 
     this.setExtent(this.dimensions);
     this.isCachingImage = true;
-    this.cachedHSV = this.color.hsv();
+    this.cachedColorDimensions = this.color[
+        SpriteMorph.prototype.penColorModel
+    ]();
     this.acceptsDrops = false;
     this.setColor(new Color(255, 255, 255));
-    this.fps = this.frameRate;
 };
 
 // StageMorph scaling
@@ -7913,7 +8077,7 @@ StageMorph.prototype.render = function (ctx) {
     ctx.save();
     ctx.fillStyle = this.color.toString();
     ctx.fillRect(0, 0, this.width(), this.height());
-    if (this.costume) {
+    if (this.costume && !(this.costume.loaded instanceof Function)) {
         ctx.scale(this.scale, this.scale);
         ctx.drawImage(
             this.costume.contents,
@@ -8452,7 +8616,7 @@ StageMorph.prototype.fireKeyEvent = function (key) {
     this.children.concat(this).forEach(morph => {
         if (isSnapObject(morph)) {
             morph.allHatBlocksForKey(evt).forEach(block => {
-                var varName =  block.inputs()[1].evaluate()[0],
+                var varName = block.inputs()[1].evaluate()[0],
                     varFrame;
                 if (varName) {
                     varFrame = new VariableFrame();
@@ -8491,6 +8655,11 @@ StageMorph.prototype.inspectKeyEvent
 
 StageMorph.prototype.fireChangeOfSceneEvent = function (message) {
     var procs = [];
+
+    // remove all clones when the green flag event is broadcast
+    if (message === '__shout__go__') {
+        this.removeAllClones();
+    }
 
     this.children.concat(this).forEach(morph => {
         if (isSnapObject(morph)) {
@@ -8780,8 +8949,8 @@ StageMorph.prototype.blockTemplates = function (
         blocks.push(block('clear'));
         blocks.push('-');
         blocks.push(block('setBackgroundColor'));
-        blocks.push(block('changeBackgroundHSVA'));
-        blocks.push(block('setBackgroundHSVA'));
+        blocks.push(block('changeBackgroundColorDimension'));
+        blocks.push(block('setBackgroundColorDimension'));
         blocks.push('-');
         blocks.push(block('reportPenTrailsAsCostume'));
         blocks.push('-');
@@ -8878,6 +9047,7 @@ StageMorph.prototype.blockTemplates = function (
         blocks.push(block('doSetGlobalFlag'));
         blocks.push('-');
         blocks.push(block('reportDate'));
+        blocks.push(block('reportBlockAttribute'));
 
         // for debugging: ///////////////
         if (this.world().isDevMode) {
@@ -9262,7 +9432,7 @@ StageMorph.prototype.newClone = nop;
 
 // StageMorph background color setting
 
-StageMorph.prototype.setColorComponentHSVA = function (idx, num) {
+StageMorph.prototype.setColorDimension = function (idx, num) {
     var n = +num;
 
     idx = +idx;
@@ -9277,23 +9447,34 @@ StageMorph.prototype.setColorComponentHSVA = function (idx, num) {
     if (idx === 3) {
         this.color.a = 1 - n / 100;
     } else {
-        this.cachedHSV[idx] = n / 100;
-        this.color.set_hsv.apply(this.color, this.cachedHSV);
+        this.cachedColorDimensions[idx] = n / 100;
+        this.color['set_' + SpriteMorph.prototype.penColorModel].apply(
+            this.color,
+            this.cachedColorDimensions
+        );
     }
     this.rerender();
 };
 
-StageMorph.prototype.getColorComponentHSLA
-    = SpriteMorph.prototype.getColorComponentHSLA;
+StageMorph.prototype.getColorDimension =
+    SpriteMorph.prototype.getColorDimension;
 
-StageMorph.prototype.changeColorComponentHSVA
-    = SpriteMorph.prototype.changeColorComponentHSVA;
+StageMorph.prototype.changeColorDimension =
+    SpriteMorph.prototype.changeColorDimension;
+
+StageMorph.prototype.setColorRGBA =
+    SpriteMorph.prototype.setColorRGBA;
+
+StageMorph.prototype.changeColorRGBA =
+    SpriteMorph.prototype.changeColorRGBA;
 
 StageMorph.prototype.setColor = function (aColor) {
     if (!this.color.eq(aColor, true)) { // observeAlpha
         this.color = aColor.copy();
         this.rerender();
-        this.cachedHSV = this.color.hsv();
+        this.cachedColorDimensions = this.color[
+            SpriteMorph.prototype.penColorModel
+        ]();
     }
 };
 
@@ -9362,6 +9543,9 @@ StageMorph.prototype.changeCustomBlockVisibility
 
 StageMorph.prototype.changeVarBlockVisibility
     = SpriteMorph.prototype.changeVarBlockVisibility;
+
+StageMorph.prototype.emptyCategories =
+    SpriteMorph.prototype.emptyCategories;
 
 // StageMorph neighbor detection
 
