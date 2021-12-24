@@ -4,12 +4,24 @@
 
 * **New Features:**
 * **Notable Changes:**
+    * same blocks with empty variadic inputs compare as equal regardless of their arity
+* **Notable Fixes:**
+* **Documentation Updates:**
+* **Translation Updates:**
+
+### 2021-12-22
+* new dev version
+* threads: same blocks with empty variadic inputs compare as equal regardless of their arity 
+ 
+
+## 7.0.2:
 * **Notable Fixes:**
     * setting a clone's rotation coordinates shadows its inherited costumes
     * preserve embedded inputs when JOINing a nested expression with an empty list
     * improved loading custom block categories
-* **Documentation Updates:**
-* **Translation Updates:**
+
+### 2021-12-21
+* prepared patch
 
 ### 2021-12-20
 * blocks, threads: preserve embedded inputs when JOINing a nested expression with an empty list
