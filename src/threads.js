@@ -64,7 +64,7 @@ SnapExtensions, AlignmentMorph, TextMorph, Cloud, HatBlockMorph*/
 
 /*jshint esversion: 6*/
 
-modules.threads = '2022-January-13';
+modules.threads = '2022-January-20';
 
 var ThreadManager;
 var Process;
@@ -861,7 +861,7 @@ Process.prototype.doApplyExtension = function (prim, args) {
 Process.prototype.reportApplyExtension = function (prim, args) {
     var ext = SnapExtensions.primitives.get(prim);
     if (isNil(ext)) {
-        throw new Error('missing / unspecified extension: ' + prim);
+        throw new Error(localize('missing / unspecified extension') + ': ' + prim);
     }
     return ext.apply(
         this.blockReceiver(),
@@ -1170,7 +1170,7 @@ Process.prototype.throwError = function (error, element) {
     this.errorFlag = true;
     this.topBlock.addErrorHighlight();
     if (ide.isAppMode) {
-        ide.showMessage(error.name + '\n' + error.message);
+        ide.showMessage(localize(error.name) + '\n' + error.message);
     } else {
         if (isNil(m) || isNil(m.world())) {m = this.topBlock; }
         m.showBubble(
@@ -1457,7 +1457,12 @@ Process.prototype.initializeFor = function (context, args) {
         );
     }
     if (!(context instanceof Context)) {
-        throw new Error('expecting a ring but getting ' + context);
+        throw new Error(
+            localize('expecting a') + ' ' +
+            localize('ring') + ' ' +
+            localize('but getting a') + ' ' +
+            localize(this.reportTypeOf(context))
+        );
     }
 
     var outer = new Context(null, null, context.outerContext),
@@ -2096,19 +2101,25 @@ Process.prototype.reportListAttribute = function (choice, list) {
         if (list.canBeTXT()) {
             return list.asTXT();
         }
-        throw new Error('unable to convert to lines');
+        throw new Error(
+            localize('unable to convert to') + ' ' + localize('lines')
+        );
     case 'csv':
         this.assertType(list, 'list');
         if (list.canBeCSV()) {
             return list.asCSV();
         }
-        throw new Error('unable to convert to CSV');
+        throw new Error(
+            localize('unable to convert to') + ' ' + localize('CSV')
+        );
     case 'json':
         this.assertType(list, 'list');
         if (list.canBeJSON()) {
             return list.asJSON();
         }
-        throw new Error('unable to convert to JSON');
+        throw new Error(
+            localize('unable to convert to') + ' ' + localize('JSON')
+        );
     default:
         return 0;
     }
@@ -3822,7 +3833,15 @@ Process.prototype.assertType = function (thing, typeString) {
     if (typeString instanceof Array && contains(typeString, thingType)) {
         return true;
     }
-    throw new Error('expecting ' + typeString + ' but getting ' + thingType);
+    throw new Error(
+        localize('expecting a') + ' ' +
+        (typeString instanceof Array ?
+            typeString.reduce((a, b) => localize(a) + ' / ' + localize(b)) // +++
+            : localize(typeString)) +
+        ' ' +
+        localize('but getting a') + ' ' +
+        localize(thingType)
+    );
 };
 
 Process.prototype.assertAlive = function (thing) {
@@ -4402,10 +4421,20 @@ Process.prototype.reportBasicTextSplit = function (string, delimiter) {
         str,
         del;
     if (!contains(types, strType)) {
-        throw new Error('expecting text instead of a ' + strType);
+        throw new Error(
+            localize('expecting a') + ' ' +
+            localize('text') + ' ' +
+            localize('but getting a') + ' ' +
+            localize(strType)
+        );
     }
     if (!contains(types, delType)) {
-        throw new Error('expecting a text delimiter instead of a ' + delType);
+        throw new Error(
+            localize('expecting a') + ' ' +
+            localize('text') + ' ' +
+            localize('but getting a') + ' ' +
+            localize(delType)
+        );
     }
     str = isNil(string) ? '' : string.toString();
     switch (this.inputOption(delimiter)) {
@@ -4761,7 +4790,7 @@ Process.prototype.goToLayer = function (name) {
 
 // Process scene primitives
 
-Process.prototype.doSwitchToScene = function (id, transmission) { // +++
+Process.prototype.doSwitchToScene = function (id, transmission) {
     var rcvr = this.blockReceiver(),
         idx = 0,
         message = this.inputOption(transmission.at(1)),
@@ -5886,18 +5915,20 @@ Process.prototype.reportContextFor = function (context, otherObj) {
         rootVars;
 
     result.receiver = otherObj;
-    if (result.outerContext) {
-        result.outerContext = copy(result.outerContext);
-        result.outerContext.variables = copy(result.outerContext.variables);
-        result.outerContext.receiver = otherObj;
-        if (result.outerContext.variables.parentFrame) {
-            rootVars = result.outerContext.variables.parentFrame;
-            receiverVars = copy(otherObj.variables);
-            receiverVars.parentFrame = rootVars;
-            result.outerContext.variables.parentFrame = receiverVars;
-        } else {
-            result.outerContext.variables.parentFrame = otherObj.variables;
-        }
+    if (!result.outerContext) {
+        result.outerContext = new Context();
+        result.variables.parentFrame = result.outerContext.variables;
+    }
+    result.outerContext = copy(result.outerContext);
+    result.outerContext.variables = copy(result.outerContext.variables);
+    result.outerContext.receiver = otherObj;
+    if (result.outerContext.variables.parentFrame) {
+        rootVars = result.outerContext.variables.parentFrame;
+        receiverVars = copy(otherObj.variables);
+        receiverVars.parentFrame = rootVars;
+        result.outerContext.variables.parentFrame = receiverVars;
+    } else {
+        result.outerContext.variables.parentFrame = otherObj.variables;
     }
     return result;
 };
@@ -6092,7 +6123,7 @@ Process.prototype.doMapCodeOrHeader = function (aContext, anOption, aString) {
         return this.doMapHeader(aContext, aString);
     }
     throw new Error(
-        ' \'' + anOption + '\'\nis not a valid option'
+        ' \'' + anOption + '\'\n' + localize('is not a valid option')
     );
 };
 
@@ -6129,7 +6160,7 @@ Process.prototype.doMapValueCode = function (type, aString) {
         break;
     default:
         throw new Error(
-            localize('unsupported data type') + ' ' + tp
+            localize('unsupported data type') + ': "' + tp + '"'
         );
     }
 
