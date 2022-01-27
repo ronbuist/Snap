@@ -87,7 +87,7 @@ BlockVisibilityDialogMorph*/
 
 /*jshint esversion: 6*/
 
-modules.objects = '2022-January-20';
+modules.objects = '2022-January-23';
 
 var SpriteMorph;
 var StageMorph;
@@ -10051,6 +10051,29 @@ SpriteBubbleMorph.prototype.dataAsMorph = function (data) {
         contents.bounds.setWidth(img.width);
         contents.bounds.setHeight(img.height);
         contents.cachedImage = img;
+
+        // support blocks to be dragged out of speech balloons:
+        contents.isDraggable = true;
+
+        contents.selectForEdit = function () {
+            var script = data.toBlock(),
+                prepare = script.prepareToBeGrabbed,
+                ide = this.parentThatIsA(IDE_Morph)||
+                    this.world().childThatIsA(IDE_Morph);
+
+            script.prepareToBeGrabbed = function (hand) {
+                prepare.call(this, hand);
+                hand.grabOrigin = {
+                    origin: ide.palette,
+                    position: ide.palette.center()
+                };
+                this.prepareToBeGrabbed = prepare;
+            };
+
+            if (ide.isAppMode) {return; }
+            script.setPosition(this.position());
+            return script;
+        };
     } else {
         contents = new TextMorph(
             data.toString(),
@@ -11362,6 +11385,7 @@ CellMorph.prototype.createContents = function () {
     // re-build my contents
     var txt,
         img,
+        myself = this,
         fontSize = SyntaxElementMorph.prototype.fontSize,
         isSameList = this.contentsMorph instanceof ListWatcherMorph
             && (this.contentsMorph.list === this.contents),
@@ -11430,6 +11454,29 @@ CellMorph.prototype.createContents = function () {
             this.contentsMorph.bounds.setWidth(img.width);
             this.contentsMorph.bounds.setHeight(img.height);
             this.contentsMorph.cachedImage = img;
+
+            // support blocks to be dragged out of watchers:
+            this.contentsMorph.isDraggable = true;
+
+            this.contentsMorph.selectForEdit = function () {
+                var script = myself.contents.toBlock(),
+                    prepare = script.prepareToBeGrabbed,
+                    ide = this.parentThatIsA(IDE_Morph) ||
+                        this.world().childThatIsA(IDE_Morph);
+
+                script.prepareToBeGrabbed = function (hand) {
+                    prepare.call(this, hand);
+                    hand.grabOrigin = {
+                        origin: ide.palette,
+                        position: ide.palette.center()
+                    };
+                    this.prepareToBeGrabbed = prepare;
+                };
+
+                if (ide.isAppMode) {return; }
+                script.setPosition(this.position());
+                return script;
+            };
         } else if (this.contents instanceof Costume) {
             img = this.contents.thumbnail(new Point(40, 40));
             this.contentsMorph = new Morph();

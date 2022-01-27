@@ -3,14 +3,54 @@
 ## in development:
 
 * **New Features:**
+    * support dragging blocks out from result bubbles, and from speech balloons and variable watchers when in edit mode
+    * support deleting and inserting individual variadic slots, script vars & ring params
+* **Notable Changes:**
+* **Notable Fixes:**
+    * fixed layout for scrolling custom categories, thanks, Eckart, for the bug report!
+    * text-costumes library: fixed preserving (more) pen state, thanks, Brian!
+* **Documentation Updates:**
+* **Translation Updates:**
+    * Hungarian, thank you, Attila Faragó, for this HUGE update!
+    * German
+
+### 2022-01-26
+* blocks: refactored slot context menus
+* blocks: support for deleting and inserting individual script vars & ring params
+* German translation update
+* blocks: support for deleting and inserting individual rings inside variadic inputs
+* updated text-costumes library, thanks, Brian!
+* Hungarian translation update, thank you, Attila Faragó!
+
+### 2022-01-25
+* blocks: support deleting and inserting individual variadic slots
+
+### 2022-01-23
+* morphic: added Node >> childThatIsA
+* tables: support dragging blocks out from table views
+
+### 2022-01-22
+* blocks: support dragging blocks out from result bubbles
+* objects: support dragging blocks out from speech balloons
+* objects: support dragging blocks out from variable watchers
+* morphic, objects: only allow dragging block out from balloons and watchers in edit mode (not in presentation mode)
+
+### 2022-01-21
+* new dev version
+* gui: fixed layout for scrolling custom categories, thanks, Eckart, for the bug report!
+
+## 7.0.6:
 * **Notable Changes:**
     * added more localizable error strings
 * **Notable Fixes:**
     * fixed binding an unbound context to a sprite (e.g. when using JOIN blocks)
     * fixed loading the Chinese translation, thanks, @moodykeke
-* **Documentation Updates:**
 * **Translation Updates:**
     * German (for error messages)
+
+### 2022-01-21
+* threads: refactored Context >> image
+* v7.0.6
 
 ### 2022-01-20
 * German translation update (for error messages)

@@ -160,7 +160,7 @@ CustomCommandBlockMorph, ToggleButtonMorph, DialMorph, SnapExtensions*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2022-January-07';
+modules.blocks = '2022-January-26';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -2259,6 +2259,26 @@ SyntaxElementMorph.prototype.showBubble = function (value, exportPic, target) {
         morphToShow.bounds.setWidth(img.width);
         morphToShow.bounds.setHeight(img.height);
         morphToShow.cachedImage = img;
+
+        // support blocks to be dragged out of result bubbles:
+        morphToShow.isDraggable = true;
+
+        morphToShow.selectForEdit = function () {
+            var script = value.toBlock(),
+                prepare = script.prepareToBeGrabbed;
+
+            script.prepareToBeGrabbed = function (hand) {
+                prepare.call(this, hand);
+                hand.grabOrigin = {
+                    origin: ide.palette,
+                    position: ide.palette.center()
+                };
+                this.prepareToBeGrabbed = prepare;
+            };
+
+            script.setPosition(this.position());
+            return script;
+        };
     } else if (typeof value === 'boolean') {
         morphToShow = SpriteMorph.prototype.booleanMorph.call(
             null,
@@ -2818,6 +2838,8 @@ BlockMorph.prototype.userMenu = function () {
         top = this.topBlock(),
         vNames = proc && proc.context && proc.context.outerContext ?
                 proc.context.outerContext.variables.names() : [],
+        slot,
+        mult,
         alternatives,
         field,
         rcvr;
@@ -2873,6 +2895,32 @@ BlockMorph.prototype.userMenu = function () {
                     'refactorThisVar',
                     'rename all blocks that\naccess this variable'
                 );
+                if (this.parent.parent instanceof MultiArgMorph &&
+                        this.parentThatIsA(ScriptsMorph)) {
+                    // offer to insert / delete a variable slot
+                    slot = this.parent;
+                    mult = slot.parent;
+                    menu.addLine();
+                    if (!mult.maxInputs ||
+                            (mult.inputs().length < mult.maxInputs)) {
+                        if (!mult.is3ArgRingInHOF() ||
+                                mult.inputs().length < 3) {
+                            menu.addItem(
+                                'insert a variable',
+                                () => mult.insertNewInputBefore(
+                                    slot,
+                                    localize('variable')
+                                )
+                            );
+                        }
+                    }
+                    if (mult.inputs().length > mult.minInputs) {
+                        menu.addItem(
+                            'delete variable',
+                            () => mult.deleteSlot(slot)
+                        );
+                    }
+                }
             }
         } else { // in palette
             if (this.selector === 'reportGetVar') {
@@ -7105,6 +7153,31 @@ RingMorph.prototype.fixBlockColor = function (nearest, isForced) {
     slot.fixLayout();
 };
 
+// RingMorph menu
+
+RingMorph.prototype.userMenu = function () {
+    var menu = new MenuMorph(this);
+    if (this.parent instanceof MultiArgMorph &&
+            this.parentThatIsA(ScriptsMorph)) {
+        if (!this.parent.maxInputs ||
+                (this.parent.inputs().length < this.parent.maxInputs)) {
+            menu.addItem(
+                'insert a slot',
+                () => this.parent.insertNewInputBefore(this)
+            );
+        }
+        if (this.isEmptySlot() &&
+                this.parent.inputs().length > this.parent.minInputs) {
+            menu.addItem(
+                'delete slot',
+                () => this.parent.deleteSlot(this)
+            );
+        }
+    return menu;
+    }
+    return RingMorph.uber.userMenu.call(this);
+};
+
 // ScriptsMorph ////////////////////////////////////////////////////////
 
 /*
@@ -8239,6 +8312,39 @@ ArgMorph.prototype.justDropped = function () {
 
 ArgMorph.prototype.getSpec = function () {
     return '%s'; // default
+};
+
+// ArgMorph menu
+
+ArgMorph.prototype.userMenu = function () {
+    var sm = this.slotMenu(),
+        menu;
+    if (!sm && !(this.parent instanceof MultiArgMorph)) {
+        return this.parent.userMenu();
+    }
+    menu = sm || new MenuMorph(this);
+    if (this.parent instanceof MultiArgMorph &&
+            this.parentThatIsA(ScriptsMorph)) {
+        if (!this.parent.maxInputs ||
+                (this.parent.inputs().length < this.parent.maxInputs)) {
+            menu.addItem(
+                'insert a slot',
+                () => this.parent.insertNewInputBefore(this)
+            );
+        }
+        if (this.parent.inputs().length > this.parent.minInputs) {
+            menu.addItem(
+                'delete slot',
+                () => this.parent.deleteSlot(this)
+            );
+        }
+    }
+    return menu;
+};
+
+ArgMorph.prototype.slotMenu = function () {
+    // subclass responsibility
+    return null;
 };
 
 // ArgMorph drawing
@@ -10397,23 +10503,24 @@ InputSlotMorph.prototype.freshTextEdit = function (aStringOrTextMorph) {
 
 // InputSlotMorph menu:
 
-InputSlotMorph.prototype.userMenu = function () {
-    var menu = new MenuMorph(this);
-    if (!StageMorph.prototype.enableCodeMapping) {
-        return this.parent.userMenu();
+InputSlotMorph.prototype.slotMenu = function () {
+    var menu;
+    if (StageMorph.prototype.enableCodeMapping) {
+        menu = new MenuMorph(this);
+        if (this.isNumeric) {
+            menu.addItem(
+                'code number mapping...',
+                'mapNumberToCode'
+            );
+        } else {
+            menu.addItem(
+                'code string mapping...',
+                'mapStringToCode'
+            );
+        }
+        return menu;
     }
-    if (this.isNumeric) {
-        menu.addItem(
-            'code number mapping...',
-            'mapNumberToCode'
-        );
-    } else {
-        menu.addItem(
-            'code string mapping...',
-            'mapStringToCode'
-        );
-    }
-    return menu;
+    return null;
 };
 
 // InputSlotMorph reacting to user choices
@@ -11196,23 +11303,24 @@ BooleanSlotMorph.prototype.mouseLeave = function () {
 
 // BooleanSlotMorph menu:
 
-BooleanSlotMorph.prototype.userMenu = function () {
-    var menu = new MenuMorph(this);
-    if (!StageMorph.prototype.enableCodeMapping) {
-        return this.parent.userMenu();
+BooleanSlotMorph.prototype.slotMenu = function () {
+    var menu;
+    if (StageMorph.prototype.enableCodeMapping) {
+        menu = new MenuMorph(this);
+        if (this.evaluate() === true) {
+            menu.addItem(
+                'code true mapping...',
+                'mapTrueToCode'
+            );
+        } else {
+            menu.addItem(
+                'code false mapping...',
+                'mapFalseToCode'
+            );
+        }
+        return menu;
     }
-    if (this.evaluate() === true) {
-        menu.addItem(
-            'code true mapping...',
-            'mapTrueToCode'
-        );
-    } else {
-        menu.addItem(
-            'code false mapping...',
-            'mapFalseToCode'
-        );
-    }
-    return menu;
+    return null;
 };
 
 // BooleanSlotMorph code mapping
@@ -12291,6 +12399,37 @@ MultiArgMorph.prototype.refresh = function () {
         input.fixLayout();
         input.rerender();
     });
+};
+
+// MultiArgMorph deleting & inserting slots:
+/*
+    caution, only call these methods with "primitive" inputs,
+    since they don't preserve embedded blocks (yes, on purpose)
+*/
+
+MultiArgMorph.prototype.deleteSlot = function (anInput) {
+    if (this.children.length <= this.minInputs + 1) {
+        return;
+    }
+    this.removeChild(anInput);
+    this.fixLayout();
+};
+
+MultiArgMorph.prototype.insertNewInputBefore = function (anInput, contents) {
+    var idx = this.children.indexOf(anInput),
+        newPart = this.labelPart(this.slotSpec);
+    
+    if (this.maxInputs && (this.children.length > this.maxInputs)) {
+        return;
+    }
+    if (contents) {
+        newPart.setContents(contents);
+    }
+    newPart.parent = this;
+    this.children.splice(idx, 0, newPart);
+    newPart.fixLayout();
+    this.fixLayout();
+    return newPart;
 };
 
 // MultiArgMorph arity control:
