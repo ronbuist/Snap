@@ -154,13 +154,14 @@ fontHeight, TableFrameMorph, SpriteMorph, Context, ListWatcherMorph, Rectangle,
 DialogBoxMorph, BlockInputFragmentMorph, PrototypeHatBlockMorph, WHITE, BLACK,
 Costume, IDE_Morph, BlockDialogMorph, BlockEditorMorph, localize, CLEAR, Point,
 isSnapObject, PushButtonMorph, SpriteIconMorph, Process, AlignmentMorph, List,
-CustomCommandBlockMorph, ToggleButtonMorph, DialMorph, SnapExtensions*/
+CustomCommandBlockMorph, ToggleButtonMorph, DialMorph, SnapExtensions,
+CostumeIconMorph, SoundIconMorph, SVG_Costume*/
 
 /*jshint esversion: 6*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2022-January-26';
+modules.blocks = '2022-January-30';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -409,7 +410,7 @@ SyntaxElementMorph.prototype.labelParts = {
     },
     '%interaction': {
         type: 'input',
-        tags: 'read-only',
+        tags: 'read-only static',
         menu: {
             'clicked' : ['clicked'],
             'pressed' : ['pressed'],
@@ -2250,8 +2251,89 @@ SyntaxElementMorph.prototype.showBubble = function (value, exportPic, target) {
         morphToShow.bounds.setWidth(img.width);
         morphToShow.bounds.setHeight(img.height);
         morphToShow.cachedImage = img;
+
+        // support costumes to be dragged out of result bubbles:
+        morphToShow.isDraggable = true;
+
+        morphToShow.selectForEdit = function () {
+            var cst = value.copy(),
+                icon,
+                prepare;
+
+            cst.name = ide.currentSprite.newCostumeName(cst.name);
+            icon = new CostumeIconMorph(cst);
+            prepare = icon.prepareToBeGrabbed;
+
+            icon.prepareToBeGrabbed = function (hand) {
+                hand.grabOrigin = {
+                    origin: ide.palette,
+                    position: ide.palette.center()
+                };
+                this.prepareToBeGrabbed = prepare;
+            };
+
+            icon.setCenter(this.center());
+            return icon;
+        };
+
+        // support exporting costumes directly from result bubbles:
+        morphToShow.userMenu = function () {
+            var menu = new MenuMorph(this);
+            menu.addItem(
+                'export',
+                () => {
+                    if (value instanceof SVG_Costume) {
+                        // don't show SVG costumes in a new tab (shows text)
+                        ide.saveFileAs(
+                            value.contents.src,
+                            'text/svg',
+                            value.name
+                        );
+                    } else { // rasterized Costume
+                        ide.saveCanvasAs(value.contents, value.name);
+                    }
+                }
+            );
+            return menu;
+        };
+
     } else if (value instanceof Sound) {
         morphToShow = new SymbolMorph('notes', 30);
+
+        // support sounds to be dragged out of result bubbles:
+        morphToShow.isDraggable = true;
+
+        morphToShow.selectForEdit = function () {
+            var snd = value.copy(),
+                icon,
+                prepare;
+
+            snd.name = ide.currentSprite.newSoundName(snd.name);
+            icon = new SoundIconMorph(snd);
+            prepare = icon.prepareToBeGrabbed;
+
+            icon.prepareToBeGrabbed = function (hand) {
+                hand.grabOrigin = {
+                    origin: ide.palette,
+                    position: ide.palette.center()
+                };
+                this.prepareToBeGrabbed = prepare;
+            };
+
+            icon.setCenter(this.center());
+            return icon;
+        };
+
+        // support exporting sounds directly from result bubbles:
+        morphToShow.userMenu = function () {
+            var menu = new MenuMorph(this);
+            menu.addItem(
+                'export',
+                () => ide.saveAudioAs(value.audio, value.name)
+            );
+            return menu;
+        };
+
     } else if (value instanceof Context) {
         img = value.image();
         morphToShow = new Morph();
@@ -2290,6 +2372,21 @@ SyntaxElementMorph.prototype.showBubble = function (value, exportPic, target) {
             txt,
             this.fontSize
         );
+
+        // support exporting text / numbers directly from result bubbles:
+        morphToShow.userMenu = function () {
+            var menu = new MenuMorph(this);
+            menu.addItem(
+                'export',
+                () => ide.saveFileAs(
+                    value,
+                    'text/plain;charset=utf-8',
+                    localize('data')
+                )
+            );
+            return menu;
+        };
+
     } else if (value === null) {
         morphToShow = new TextMorph(
             '',
@@ -2301,9 +2398,10 @@ SyntaxElementMorph.prototype.showBubble = function (value, exportPic, target) {
             this.fontSize
         );
     } else if (value.toString) {
-        morphToShow = new TextMorph(
+        return this.showBubble(
             value.toString(),
-            this.fontSize
+            exportPic,
+            target
         );
     }
     if (ide && (ide.currentSprite !== target)) {
