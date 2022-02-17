@@ -64,7 +64,7 @@ SnapExtensions, AlignmentMorph, TextMorph, Cloud, HatBlockMorph*/
 
 /*jshint esversion: 6*/
 
-modules.threads = '2022-January-30';
+modules.threads = '2022-February-16';
 
 var ThreadManager;
 var Process;
@@ -878,7 +878,7 @@ Process.prototype.reportOr = function (block) {
         this.evaluateNextInput(block);
     } else if (inputs.length === 1) {
         // this.assertType(inputs[0], 'Boolean');
-        if (inputs[0]) {
+        if (inputs[0] === true) {
             if (this.flashContext()) {return; }
             this.returnValueToParentContext(true);
             this.popContext();
@@ -888,9 +888,16 @@ Process.prototype.reportOr = function (block) {
     } else {
         // this.assertType(inputs[1], 'Boolean');
         if (this.flashContext()) {return; }
-        this.returnValueToParentContext(inputs[1] === true);
+        // this.returnValueToParentContext(inputs[1] === true);
+        this.returnValueToParentContext(
+            this.hyperDyadic(this.reportBasicOr, inputs[0], inputs[1])
+        );
         this.popContext();
     }
+};
+
+Process.prototype.reportBasicOr = function (a, b) {
+    return a || b;
 };
 
 Process.prototype.reportAnd = function (block) {
@@ -910,9 +917,16 @@ Process.prototype.reportAnd = function (block) {
     } else {
         // this.assertType(inputs[1], 'Boolean');
         if (this.flashContext()) {return; }
-        this.returnValueToParentContext(inputs[1] === true);
+        // this.returnValueToParentContext(inputs[1] === true);
+        this.returnValueToParentContext(
+            this.hyperDyadic(this.reportBasicAnd, inputs[0], inputs[1])
+        );
         this.popContext();
     }
+};
+
+Process.prototype.reportBasicAnd = function (a, b) {
+    return a && b;
 };
 
 Process.prototype.doReport = function (block) {
@@ -2334,70 +2348,53 @@ Process.prototype.doIfElse = function () {
 };
 
 Process.prototype.reportIfElse = function (block) {
-    var inputs = this.context.inputs;
+    var inputs = this.context.inputs,
+        condition,
+        expression;
 
     if (inputs.length < 1) {
+        // evaluate the first input, either a Boolean or a (nested) list
         this.evaluateNextInput(block);
-    } else if (inputs.length > 1) {
-        if (this.flashContext()) {return; }
+        return;
+    }
+
+    if (inputs[0] instanceof List && this.enableHyperOps) {
+        // hyperize a (nested) list of Booleans
+        if (this.context.accumulator === null) {
+            this.context.accumulator = [];
+        } else if (inputs.length > 1) {
+            // retrieve & remember previous result & remove it from the inputs
+            this.context.accumulator.push(inputs.pop());
+        }
+        if (this.context.accumulator.length === inputs[0].length()) {
+            // done with all the conditions in the current list
+            this.returnValueToParentContext(
+                new List(this.context.accumulator)
+            );
+            this.popContext();
+            return;
+        }
+        condition = inputs[0].at(this.context.accumulator.length + 1);
+        this.pushContext(block); // recursive call
+        this.context.addInput(condition); //
+        return;
+    }
+
+    // handle a scalar condition
+    if (inputs.length > 1) {
+        // done with evaluating a case, retrieve and return its result
         this.returnValueToParentContext(inputs.pop());
         this.popContext();
+        return;
+    }
+    // this.assertType(inputs[0], ['Boolean']);
+    if (inputs[0]) {
+        expression = block.inputs()[1]; // true block
     } else {
-        // this.assertType(inputs[0], ['Boolean']);
-        if (inputs[0]) {
-            this.evaluateNextInput(block);
-        } else {
-            inputs.push(null);
-            this.evaluateNextInput(block);
-        }
+        expression = block.inputs()[2]; // false block
     }
+    this.pushContext(expression);
 };
-
-/*
-// Process - hyperized reporter-if, experimental, commented out for now
-
-Process.prototype.reportIfElse = function (block) {
-    var inputs = this.context.inputs;
-
-    if (inputs.length < 1) {
-        this.evaluateNextInput(block);
-    } else if (inputs.length > 1) {
-        if (this.flashContext()) {return; }
-        if (inputs[0] instanceof List && this.enableHyperOps) {
-            if (inputs.length < 3) {
-                this.evaluateNextInput(block);
-            } else {
-                this.returnValueToParentContext(
-                    this.hyperIf.apply(this, inputs)
-                );
-                this.popContext();
-            }
-        } else {
-            this.returnValueToParentContext(inputs.pop());
-            this.popContext();
-        }
-    } else {
-        if (inputs[0] instanceof List && this.enableHyperOps) {
-            this.evaluateNextInput(block);
-        } else {
-            // this.assertType(inputs[0], ['Boolean']);
-            if (inputs[0]) {
-                this.evaluateNextInput(block);
-            } else {
-                inputs.push(null);
-                this.evaluateNextInput(block);
-            }
-        }
-    }
-};
-
-Process.prototype.hyperIf = function (test, trueValue, falseValue) {
-    if (test instanceof List) {
-        return test.map(each => this.hyperIf(each, trueValue, falseValue));
-    }
-    return test ? trueValue : falseValue;
-};
-*/
 
 // Process process related primitives
 
@@ -3836,7 +3833,7 @@ Process.prototype.assertType = function (thing, typeString) {
     throw new Error(
         localize('expecting a') + ' ' +
         (typeString instanceof Array ?
-            typeString.reduce((a, b) => localize(a) + ' / ' + localize(b)) // +++
+            typeString.reduce((a, b) => localize(a) + ' / ' + localize(b))
             : localize(typeString)) +
         ' ' +
         localize('but getting a') + ' ' +

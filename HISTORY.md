@@ -3,10 +3,74 @@
 ## in development:
 
 * **New Features:**
+    * new SciSnap2 extension and library, thanks, Eckart!
 * **Notable Changes:**
+    * hyperized reporter-IF/ELSE
 * **Notable Fixes:**
+    * strings library: fixed lowercase(number), thanks, Brian and Simon!
+    * swapped "lists" and "other" in the make-a-block category menu, thanks Brian, for the report!
 * **Documentation Updates:**
 * **Translation Updates:**
+
+### 2022-02-17
+* strings library: fixed lowercase(number), thanks, Brian and Simon!
+* new SciSnap2 extension and library, thanks, Eckart!
+* added Eckart to the contributors credits
+* byob: swapped "lists" and "other" in the make-a-block category menu
+
+### 2022-02-16
+* threads: hyperized reporter-IF/ELSE
+
+### 2022-02-14
+* new dev version
+* gui: temporary fix for a new temporary Chrome v98 blank-tab bug (later reverted)
+
+## 7.1.4:
+* **Notable Changes:**
+    * hyperized Boolean AND, OR operators
+* **Notable Fixes:**
+    * preserve contents of variadic inputs when editing or translating a custom blocks
+
+### 2022-02-11
+* prepared v7.1.4
+
+### 2022-02-09
+* new dev version
+* blocks, byob: preserve contents of variadic inputs when editing or translating a custom blocks
+* threads: hyperized Boolean AND, OR operators
+
+## 7.1.3:
+* **New Features:**
+    * new bitwise operators library, thanks, Bernat!
+* **Notable Fixes:**
+    * JSON encoding for nested lists
+    * enforce static typing for stage backgrounds and sounds, and for sprite duplicates
+    * prevent Chrome from crashing when using serial ports on a Mac, thanks, Dariusz!
+    * fixed missing blocks in variadic reporters library, thanks, Brian!
+    * fixed an infinite loop in the signada library, thanks, Bernat!
+    * fixed missing blocks in bar chars library
+    * fixed missing blocks in frequency distribution analysis library
+    * fixed missing blocks in iteration composition library
+    * fixed a comment in "remove duplicates" in the list utilities library
+    * fixed missing blocks in parallelization library
+
+### 2022-02-08
+* signade library: fixed cached values being stuck forever in edge case, thanks, Bernat!
+* variadic reporters library: fixed blocks that apparently were "lost in translation" before, thanks, Brian!
+* fixed PIPE in bar-charts library
+* fixed PIPE in frequency distribution analysis library
+* fixed PIPE in iteration composition library
+* fixed the comment in "remove duplicates" in the list utilities library to reflect that the last match is kept
+* fixed "do in parallel" block in parallelization library
+* new bitwise operators library, thanks, Bernat!
+* moved bitwise operators into standard extensions
+* prepared v7.1.3
+
+### 2022-02-07
+* lists: fixed JSON encoding for nested lists
+* objects: fixed static "costume" type for stage backgrounds and sprite duplicates
+* objects: fixed static "sound" type for stage backgrounds and sprite duplicates
+* extensions: fixed #2980, thanks, Dariusz!
 
 ### 2022-02-04
 * new dev version
