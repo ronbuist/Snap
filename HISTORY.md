@@ -3,14 +3,63 @@
 ## in development:
 
 * **New Features:**
+* **Notable Changes:**
+* **Notable Fixes:**
+* **Documentation Updates:**
+* **Translation Updates:**
+
+### 2022-02-25
+* new dev version
+
+## 7.2.3:
+* **Notable Fix:**
+    * escape JIT-compiled inputs
+
+### 2022-02-25
+    * threads: escape JIT-compiled inputs
+
+## 7.2.2:
+* **Notable Changes:**
+    * renamed "crossproduct" to "combinations"
+* **Translation Updates:**
+    * German
+
+### 2022-02-22
+    * renamed "crossproduct" to "combinations"
+
+## 7.2.1:
+* **New Features:**
+    * new "List Comprehension" library adding a HOF version of ZIP
+    * added "crossproduct" as relabel option for "append"
+* **Translation Updates:**
+    * German
+
+### 2022-02-22
+* new dev version
+* new "List Comprehension" library adding a HOF version of ZIP
+* threads: added "crossproduct" as relabel option for "append"
+* blocks: restore embedded inputs when relabelling variadic primitives
+* German translation update for "crossproduct %lists"
+* prepared patch
+
+## 7.2.0:
+* **New Features:**
     * new SciSnap2 extension and library, thanks, Eckart!
+    * new MQTT extension and library, thanks, Simon and Xavier!
 * **Notable Changes:**
     * hyperized reporter-IF/ELSE
 * **Notable Fixes:**
     * strings library: fixed lowercase(number), thanks, Brian and Simon!
     * swapped "lists" and "other" in the make-a-block category menu, thanks Brian, for the report!
-* **Documentation Updates:**
-* **Translation Updates:**
+    * don't let deleted sprites clone
+
+### 2022-02-21
+* threads: optimized hyper-if/else to skip repeated evaluation of literal true/false cases
+* objects: prevent deleted sprites from cloning
+* prepared v7.2.0
+
+### 2022-02-18
+* new MQTT extension and library, thanks, Simon and Xavier!
 
 ### 2022-02-17
 * strings library: fixed lowercase(number), thanks, Brian and Simon!
