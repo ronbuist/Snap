@@ -8,8 +8,24 @@
 * **Documentation Updates:**
 * **Translation Updates:**
 
+### 2022-02-26
+* new dev version
+
+## 7.2.5:
+* **Notable Fix:**
+    * escape JIT-compiled variable names
+
+### 2022-02-26
+    * threads: escape JIT-compiled variable names
+
+## 7.2.4:
+* **Notable Fix:**
+    * tweaked JOIN BLOCKS for variables
+
 ### 2022-02-25
 * new dev version
+* threads: tweaked JOIN BLOCKS for variables
+* prepared patch 
 
 ## 7.2.3:
 * **Notable Fix:**
