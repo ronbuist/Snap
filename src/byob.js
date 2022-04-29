@@ -111,7 +111,7 @@ ArgLabelMorph*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.byob = '2022-March-23';
+modules.byob = '2022-April-28';
 
 // Declarations
 
@@ -528,6 +528,77 @@ CustomBlockDefinition.prototype.updateTranslations = function (text) {
      		this.translations[key] = val;
      	}
     });
+};
+
+// CustomBlockDefinition API, highly experimental & under construction
+
+CustomBlockDefinition.prototype.setBlockLabel = function (abstractSpec) {
+    // private - only to be called from a Process that also does housekeeping
+    // abstract block specs replace the inputs with underscores,
+    // e.g. "move _ steps", "say _", "_ + _"
+    var count = abstractSpec.split(' ').filter(word => word === '_').length,
+        inputNames = this.inputNames(),
+        parts = [],
+        spec = abstractSpec;
+
+    if (count !== inputNames.length) {
+        throw new Error('expecting the number of inputs to match');
+    }
+    if (spec.startsWith('_ ')) {
+        parts.push('');
+        spec = spec.slice(2);
+    }
+    if (spec.endsWith(' _')) {
+        spec = spec.slice(0, -2);
+    }
+    parts = parts.concat(spec.split(' _ '));
+    spec = '';
+    parts.forEach((part, i) =>
+        spec += (part + (
+            inputNames[i] ? ' %\'' + inputNames[i] + '\' ' : '')
+        )
+    );
+    this.spec = spec.trim();
+};
+
+CustomBlockDefinition.prototype.setBlockDefinition = function (aContext) {
+    // private - only to be called from a Process that also does housekeeping
+    var oldInputs = this.inputNames(),
+        newInputs =  aContext.inputs,
+        spec = this.abstractBlockSpec(),
+        declarations = this.declarations,
+        parts = [];
+
+    if (oldInputs.length !== newInputs.length) {
+        throw new Error('expecting the number of inputs to match');
+    }
+
+    // change the input names in the spec to those of the given context
+    if (spec.startsWith('_ ')) {
+        parts.push('');
+        spec = spec.slice(2);
+    }
+    if (spec.endsWith(' _')) {
+        spec = spec.slice(0, -2);
+    }
+    parts = parts.concat(spec.split(' _ '));
+    spec = '';
+    parts.forEach((part, i) =>
+        spec += (part + (
+            newInputs[i] ? ' %\'' + newInputs[i] + '\' ' : '')
+        )
+    );
+    this.spec = spec.trim();
+
+    // change the input names in the slot declarations to those of the context
+    // copy declarations
+    this.declarations = new Map();
+    for (var [key, val] of declarations) {
+        this.declarations.set(newInputs[oldInputs.indexOf(key)], val);
+    }
+
+    // replace the definition body with the given context
+    this.body = aContext;
 };
 
 // CustomBlockDefinition picturing
@@ -1218,6 +1289,11 @@ CustomCommandBlockMorph.prototype.userMenu = function () {
             'uncheck to\nhide in palette',
             'check to\nshow in palette'
         );
+        menu.addItem(
+            "export...",
+            () => hat.exportBlockDefinition(),
+            'including dependencies'
+        );
     } else {
         menu = this.constructor.uber.userMenu.call(this);
         dlg = this.parentThatIsA(DialogBoxMorph);
@@ -1312,10 +1388,11 @@ CustomCommandBlockMorph.prototype.userMenu = function () {
 };
 
 CustomCommandBlockMorph.prototype.exportBlockDefinition = function () {
-    var ide = this.parentThatIsA(IDE_Morph),
-        rcvr = this.scriptTarget(),
-        def = this.isGlobal ? this.definition
-            : rcvr.getMethod(this.blockSpec);
+    var rcvr = this.scriptTarget(),
+        ide = rcvr.parentThatIsA(IDE_Morph),
+        def = this.isGlobal || this instanceof PrototypeHatBlockMorph ?
+            this.definition
+                : rcvr.getMethod(this.blockSpec);
     new BlockExportDialogMorph(
         ide.serializer,
         [def].concat(def.collectDependencies([], [], rcvr)),
@@ -2789,6 +2866,9 @@ PrototypeHatBlockMorph.prototype.mouseClickLeft = function () {
 PrototypeHatBlockMorph.prototype.userMenu = function () {
     return this.parts()[0].userMenu();
 };
+
+PrototypeHatBlockMorph.prototype.exportBlockDefinition =
+    CustomCommandBlockMorph.prototype.exportBlockDefinition;
 
 // PrototypeHatBlockMorph zebra coloring
 

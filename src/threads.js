@@ -63,9 +63,9 @@ TableFrameMorph, ColorSlotMorph, isSnapObject, newCanvas, Symbol, SVG_Costume,
 SnapExtensions, AlignmentMorph, TextMorph, Cloud, HatBlockMorph,
 StagePickerMorph*/
 
-/*jshint esversion: 6, bitwise: false, evil: true*/
+/*jshint esversion: 11, bitwise: false, evil: true*/
 
-modules.threads = '2022-March-31';
+modules.threads = '2022-April-28';
 
 var ThreadManager;
 var Process;
@@ -3647,6 +3647,16 @@ Process.prototype.doAsk = function (data) {
         rightSpace;
 
     stage.keysPressed = {};
+    if (!data) {
+        // terminate all other processes currently asking a question
+        // or waiting to ask one
+        stage.threads.processes.filter(proc =>
+            (proc.prompter && !proc.prompter.isDone) ||
+            (proc?.context?.expression?.selector === 'doAsk' && proc !== this)
+        ).forEach(proc => proc.stop());
+        stage.lastAnswer = '';
+        return;
+    }
     if (!this.prompter) {
         activePrompter = detect(
             stage.children,
@@ -5591,6 +5601,8 @@ Process.prototype.reportBasicBlockAttribute = function (attribute, block) {
     this.assertType(block, ['command', 'reporter', 'predicate']);
     expr = block.expression;
     switch (choice) {
+    case 'label':
+        return expr ? expr.abstractBlockSpec() : '';
     case 'definition':
         if (expr.isCustomBlock) {
             if (expr.isGlobal) {
@@ -5610,6 +5622,77 @@ Process.prototype.reportBasicBlockAttribute = function (attribute, block) {
         return (expr && expr.isCustomBlock) ? !!expr.isGlobal : true;
     }
     return '';
+};
+
+Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
+    // highly experimental & under construction
+    var choice = this.inputOption(attribute),
+        rcvr = this.blockReceiver(),
+        ide = rcvr.parentThatIsA(IDE_Morph),
+        oldSpec,
+        count = 1,
+        expr,
+        def,
+        template;
+
+    this.assertType(block, ['command', 'reporter', 'predicate']);
+    expr = block.expression;
+    if (!expr.isCustomBlock) {
+        throw new Error('expecting a custom block\nbut getting a primitive');
+    }
+    def = expr.isGlobal ? expr.definition : rcvr.getMethod(expr.semanticSpec);
+    oldSpec = def.blockSpec();
+
+    switch (choice) {
+    case 'label':
+        def.setBlockLabel(val);
+        break;
+    case 'definition':
+        this.assertType(val, 'command');
+        def.setBlockDefinition(val);
+        break;
+    case 'category':
+        this.assertType(val, ['number', 'text']);
+        if (this.reportTypeOf(val) === 'text') {
+            def.category = contains(
+                SpriteMorph.prototype.allCategories(),
+                val
+            ) ? val : 'other';
+            break;
+        }
+        def.category = SpriteMorph.prototype.allCategories()[+val - 1] ||
+            'other';
+        break;
+    default:
+        return;
+    }
+
+    // make sure the spec is unique
+    while (rcvr.doubleDefinitionsFor(def).length > 0) {
+        count += 1;
+        def.spec += (' (' + count + ')');
+    }
+    
+    // update all block instances:
+    // refer to "updateDefinition()" of BlockEditorMorph:
+    template = rcvr.paletteBlockInstance(def);
+
+    if (def.isGlobal) {
+        rcvr.allBlockInstances(def).reverse().forEach(
+            block => block.refresh()
+        );
+    } else {
+        rcvr.allDependentInvocationsOf(oldSpec).reverse().forEach(
+            block => block.refresh(def)
+        );
+    }
+    if (template) {
+        template.refreshDefaults();
+    }
+    ide.flushPaletteCache();
+    ide.categories.refreshEmpty();
+    ide.refreshPalette();
+    ide.recordUnsavedChanges();
 };
 
 Process.prototype.reportAttributeOf = function (attribute, name) {
