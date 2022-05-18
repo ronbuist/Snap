@@ -61,11 +61,11 @@ StageMorph, SpriteMorph, StagePrompterMorph, Note, modules, isString, copy, Map,
 isNil, WatcherMorph, List, ListWatcherMorph, alert, console, TableMorph, BLACK,
 TableFrameMorph, ColorSlotMorph, isSnapObject, newCanvas, Symbol, SVG_Costume,
 SnapExtensions, AlignmentMorph, TextMorph, Cloud, HatBlockMorph,
-StagePickerMorph*/
+StagePickerMorph, CustomBlockDefinition*/
 
 /*jshint esversion: 11, bitwise: false, evil: true*/
 
-modules.threads = '2022-April-28';
+modules.threads = '2022-May-17';
 
 var ThreadManager;
 var Process;
@@ -5620,6 +5620,12 @@ Process.prototype.reportBasicBlockAttribute = function (attribute, block) {
         return expr ? !!expr.isCustomBlock : false;
     case 'global?':
         return (expr && expr.isCustomBlock) ? !!expr.isGlobal : true;
+    case 'type':
+        return ['command', 'reporter', 'predicate'].indexOf(
+            this.reportTypeOf(block)
+        ) + 1;
+    case 'scope':
+        return expr.isCustomBlock ? (expr.isGlobal ? 1 : 2) : 0;
     }
     return '';
 };
@@ -5629,13 +5635,14 @@ Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
     var choice = this.inputOption(attribute),
         rcvr = this.blockReceiver(),
         ide = rcvr.parentThatIsA(IDE_Morph),
+        types = ['command', 'reporter', 'predicate'],
         oldSpec,
-        count = 1,
         expr,
         def,
-        template;
+        template,
+        type;
 
-    this.assertType(block, ['command', 'reporter', 'predicate']);
+    this.assertType(block, types);
     expr = block.expression;
     if (!expr.isCustomBlock) {
         throw new Error('expecting a custom block\nbut getting a primitive');
@@ -5643,12 +5650,28 @@ Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
     def = expr.isGlobal ? expr.definition : rcvr.getMethod(expr.semanticSpec);
     oldSpec = def.blockSpec();
 
+    function isInUse() {
+        if (def.isGlobal) {
+            return ide.sprites.asArray().concat([ide.stage]).some((any, idx) =>
+                any.usesBlockInstance(def, false, idx)
+            );
+        }
+        return rcvr.allDependentInvocationsOf(oldSpec).length > 0;
+    }
+
+    function remove(arr, value) {
+        var idx = arr.indexOf(value);
+        if (idx > -1) {
+            arr.splice(idx, 1);
+        }
+    }
+
     switch (choice) {
     case 'label':
         def.setBlockLabel(val);
         break;
     case 'definition':
-        this.assertType(val, 'command');
+        this.assertType(val, types);
         def.setBlockDefinition(val);
         break;
     case 'category':
@@ -5663,14 +5686,50 @@ Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
         def.category = SpriteMorph.prototype.allCategories()[+val - 1] ||
             'other';
         break;
+    case 'type':
+        this.assertType(val, ['number', 'text']);
+        if (this.reportTypeOf(val) === 'text') {
+            type = val;
+        } else {
+            type = types[val - 1] || '';
+        }
+        if (!types.includes(type)) {return;}
+
+        if (rcvr.allBlockInstances(def).every(block =>
+            block.isChangeableTo(type))
+        ) {
+            def.type = type;
+        } else {
+            throw new Error('cannot change this\nfor a block that is in use');
+        }
+        break;
+    case 'scope':
+        if (isInUse()) {
+            throw new Error('cannot change this\nfor a block that is in use');
+        }
+        this.assertType(val, ['number', 'text']);
+        type = +val;
+        if (type === 1 && !def.isGlobal) {
+            // make global
+            def.isGlobal = true;
+            remove(rcvr.customBlocks, def);
+            ide.stage.globalBlocks.push(def);
+        } else if (type === 2 && def.isGlobal) {
+            // make local
+            def.isGlobal = false;
+            remove(ide.stage.globalBlocks, def);
+            rcvr.customBlocks.push(def);
+        } else {
+            return;
+        }
+        break;
     default:
         return;
     }
 
     // make sure the spec is unique
     while (rcvr.doubleDefinitionsFor(def).length > 0) {
-        count += 1;
-        def.spec += (' (' + count + ')');
+        def.spec += (' (2)');
     }
     
     // update all block instances:
@@ -5693,6 +5752,41 @@ Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
     ide.categories.refreshEmpty();
     ide.refreshPalette();
     ide.recordUnsavedChanges();
+};
+
+Process.prototype.reportDefineBlock = function (label, context) {
+    // highly experimental & under construction
+    var rcvr = this.blockReceiver(),
+        ide = rcvr.parentThatIsA(IDE_Morph),
+        count = 1,
+        spec, def;
+
+    this.assertType(label, 'text');
+    if (label === '') {return ''; }
+    this.assertType(context, ['command', 'reporter', 'predicate']);
+
+    // make a new custom block definition
+    def = new CustomBlockDefinition('BYOB'); // haha!
+    def.type = this.reportTypeOf(context);
+    def.category = 'other';
+    def.isGlobal = true;
+    def.setBlockDefinition(context);
+    def.setBlockLabel(label);
+    ide.stage.globalBlocks.push(def);
+
+    // make sure the spec is unique
+    spec = def.spec;
+    while (rcvr.doubleDefinitionsFor(def).length > 0) {
+        count += 1;
+        def.spec = spec + ' (' + count + ')';
+    }
+
+    // update the IDE
+    ide.flushPaletteCache();
+    ide.categories.refreshEmpty();
+    ide.refreshPalette();
+    ide.recordUnsavedChanges();
+    return def.blockInstance().reify();
 };
 
 Process.prototype.reportAttributeOf = function (attribute, name) {
@@ -5795,18 +5889,24 @@ Process.prototype.reportGet = function (query) {
         stage,
         objName;
 
+    function allOtherSprites() {
+        var stage = thisObj.parentThatIsA(StageMorph),
+            sprites = stage.children.filter(each =>
+                each instanceof SpriteMorph && each !== thisObj
+            ),
+            inHand = stage.world().hand.children[0];
+        if (inHand instanceof SpriteMorph) {
+            sprites.push(inHand);
+        }
+        return sprites;
+    }
+
     if (thisObj) {
         switch (this.inputOption(query)) {
         case 'self' :
             return thisObj;
         case 'other sprites':
-            stage = thisObj.parentThatIsA(StageMorph);
-            return new List(
-                stage.children.filter(each =>
-                    each instanceof SpriteMorph &&
-                        each !== thisObj
-                )
-            );
+            return new List(allOtherSprites());
         case 'parts': // shallow copy to disable side-effects
             return new List((thisObj.parts || []).map(each => each));
         case 'anchor':
@@ -5818,13 +5918,10 @@ Process.prototype.reportGet = function (query) {
         case 'temporary?':
             return thisObj.isTemporary || false;
         case 'clones':
-            stage = thisObj.parentThatIsA(StageMorph);
             objName = thisObj.name || thisObj.cloneOriginName;
             return new List(
-                stage.children.filter(each =>
-                    each.isTemporary &&
-                        (each !== thisObj) &&
-                            (each.cloneOriginName === objName)
+                allOtherSprites().filter(each =>
+                    each.isTemporary && (each.cloneOriginName === objName)
                 )
             );
         case 'other clones':
@@ -5834,17 +5931,13 @@ Process.prototype.reportGet = function (query) {
             // old rectangular, bounding-box-based algorithm
             // deprecated in favor of a circular perimeter based newer one
             /*
-            stage = thisObj.parentThatIsA(StageMorph);
             neighborhood = thisObj.bounds.expandBy(new Point(
                 thisObj.width(),
                 thisObj.height()
             ));
             return new List(
-                stage.children.filter(each =>
-                    each instanceof SpriteMorph &&
-                        each.isVisible &&
-                        (each !== thisObj) &&
-                        each.bounds.intersects(neighborhood)
+                allOtherSprites.filter(each =>
+                    each.isVisible && each.bounds.intersects(neighborhood)
                 )
             );
             */

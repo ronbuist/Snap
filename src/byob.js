@@ -111,7 +111,7 @@ ArgLabelMorph*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.byob = '2022-April-28';
+modules.byob = '2022-May-03';
 
 // Declarations
 
@@ -564,24 +564,29 @@ CustomBlockDefinition.prototype.setBlockLabel = function (abstractSpec) {
 CustomBlockDefinition.prototype.setBlockDefinition = function (aContext) {
     // private - only to be called from a Process that also does housekeeping
     var oldInputs = this.inputNames(),
-        newInputs =  aContext.inputs,
-        spec = this.abstractBlockSpec(),
+        newInputs = aContext.inputs,
         declarations = this.declarations,
-        parts = [];
+        parts = [],
+        suffix = [],
+        body = aContext,
+        reportBlock,
+        spec;
 
-    if (oldInputs.length !== newInputs.length) {
-        throw new Error('expecting the number of inputs to match');
-    }
+    // remove excess inputs or add missing ones
+    this.addInputs(newInputs.length - oldInputs.length);
+    spec = this.abstractBlockSpec();
+    oldInputs = this.inputNames();
 
     // change the input names in the spec to those of the given context
-    if (spec.startsWith('_ ')) {
+    while (spec.startsWith('_ ')) {
         parts.push('');
         spec = spec.slice(2);
     }
-    if (spec.endsWith(' _')) {
+    while (spec.endsWith(' _')) {
         spec = spec.slice(0, -2);
+        suffix.push('');
     }
-    parts = parts.concat(spec.split(' _ '));
+    parts = parts.concat(spec.split(' _ ')).concat(suffix);
     spec = '';
     parts.forEach((part, i) =>
         spec += (part + (
@@ -598,7 +603,69 @@ CustomBlockDefinition.prototype.setBlockDefinition = function (aContext) {
     }
 
     // replace the definition body with the given context
-    this.body = aContext;
+    if (body.expression instanceof Array) {
+        this.body = null;
+        return;
+    } else if (body.expression instanceof ReporterBlockMorph) {
+        // turn reporter epressions into a command stack with "report"
+        body = copy(aContext);
+        reportBlock = SpriteMorph.prototype.blockForSelector('doReport');
+        reportBlock.replaceInput(
+            reportBlock.inputs()[0],
+            body.expression.fullCopy()
+        );
+        body.expression = reportBlock;
+    }
+    this.body = body;
+};
+
+CustomBlockDefinition.prototype.addInputs = function (count) {
+    // private - only to be called from a Process that also does housekeeping
+    var inputNames, i;
+
+    if (count === 0) {
+        return;
+    } else if (count < 0) {
+        return this.removeInputs(-count);
+    }
+
+    inputNames = this.inputNames();
+
+    // create gensyms
+    for (i = 0; i < count; i += 1) {
+        inputNames.push(this.gensym(inputNames));
+    }
+
+    // add gensyms to the spec
+    this.spec = this.parseSpec(this.spec).concat(
+        inputNames.slice(-count).map(str => '%' + str)
+    ).join(' ').trim();
+
+    // add slot declarations for the gensyms
+    inputNames.slice(-count).forEach(name =>
+        this.declarations.set(name, ['%s'])
+    );
+};
+
+CustomBlockDefinition.prototype.removeInputs = function (count) {
+    // private - only to be called from a Process that also does housekeeping
+    var surplus = this.inputNames().slice(-count);
+
+    // remove the surplus input names from the spec
+    this.spec = this.parseSpec(this.spec).filter(str =>
+        !(str.length > 1 && (str[0]) === '%' && surplus.includes(str.slice(1)))
+    ).join(' ').trim();
+
+    // remove the surplus input names from the slot declarations
+    surplus.forEach(name => this.declarations.delete(name));
+};
+
+CustomBlockDefinition.prototype.gensym = function (existing) {
+    var count = 1;
+    while (contains(existing, '#' + count)) {
+        count += 1;
+    }
+    return '#' + count;
 };
 
 // CustomBlockDefinition picturing
@@ -2617,7 +2684,7 @@ BlockEditorMorph.prototype.updateDefinition = function () {
         oldSpec = this.definition.blockSpec(),
         pos = this.body.contents.position(),
         count = 1,
-        element;
+        spec, element;
 
     this.definition.receiver = this.target; // only for serialization
     this.definition.spec = this.prototypeSpec();
@@ -2659,9 +2726,10 @@ BlockEditorMorph.prototype.updateDefinition = function () {
     this.definition.body = this.context(head);
 
     // make sure the spec is unique
+    spec = this.definition.spec;
     while (this.target.doubleDefinitionsFor(this.definition).length > 0) {
         count += 1;
-        this.definition.spec = this.definition.spec + ' (' + count + ')';
+        this.definition.spec = spec + ' (' + count + ')';
     }
 
     this.refreshAllBlockInstances(oldSpec);

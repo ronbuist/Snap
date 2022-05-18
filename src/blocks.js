@@ -161,7 +161,7 @@ CostumeIconMorph, SoundIconMorph, SVG_Costume, embedMetadataPNG*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2022-April-28';
+modules.blocks = '2022-May-17';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -805,7 +805,9 @@ SyntaxElementMorph.prototype.labelParts = {
             'definition': ['definition'],
             'category': ['category'],
             'custom?': ['custom?'],
-            'global?': ['global?']
+            'global?': ['global?'],
+            'type': ['type'],
+            'scope': ['scope']
         }
     },
     '%byob': {
@@ -814,7 +816,9 @@ SyntaxElementMorph.prototype.labelParts = {
         menu: {
             'label': ['label'],
             'definition': ['definition'],
-            'category': ['category']
+            'category': ['category'],
+            'type': ['type'],
+            'scope': ['scope']
         }
     },
 
@@ -3563,6 +3567,43 @@ BlockMorph.prototype.developersMenu = function () {
         )
     );
     return menu;
+};
+
+BlockMorph.prototype.isChangeableTo = function (type) {
+    // answer whether it's safe to change my type, e.g. from command to
+    // reporter or from global to sprite-local.
+    // valid types "command", "reporter" and "predicate".
+    //
+    // a block is considered "changeable" if
+    // -------------------------------------
+    // * it's a command & the target type isn't also a command & doesn't have a
+    //   next block & is unattached (e.g. the only expression inside a context).
+    //
+    // * it's a reporter or a predicate & the target type is a command & is
+    //   unattached (e.g. the only expression inside a function context).
+    //
+    // * it's a reporter or a predicate & the target type is also a reporter or
+    //   a predicate the type can always be changed
+
+    var typ = this.type();
+    if (typ === type) {return true; }
+    if (typ === 'command' || type === 'command') {
+        return this.isUnattached();
+    }
+    return true;
+};
+
+BlockMorph.prototype.type = function () {
+    // private
+    return this instanceof CommandBlockMorph ? 'command'
+        : (this.isPredicate ? 'predicate' : 'reporter');
+};
+
+BlockMorph.prototype.isUnattached = function () {
+    // private
+    return ((this.nextBlock && !this.nextBlock()) || !this.nextBlock) &&
+        !(this.parent instanceof SyntaxElementMorph) &&
+        !(this.parent instanceof ScriptsMorph)
 };
 
 BlockMorph.prototype.isInheritedVariable = function (shadowedOnly) {
