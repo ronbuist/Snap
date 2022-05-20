@@ -111,7 +111,7 @@ ArgLabelMorph*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.byob = '2022-May-03';
+modules.byob = '2022-May-20';
 
 // Declarations
 
@@ -2669,9 +2669,18 @@ BlockEditorMorph.prototype.refreshAllBlockInstances = function (oldSpec) {
         this.target.allBlockInstances(this.definition).reverse().forEach(
             block => block.refresh()
         );
+        this.target.parentThatIsA(StageMorph).allContextsUsing(def).forEach(
+            context => context.changed()
+        );
     } else {
         this.target.allDependentInvocationsOf(oldSpec).reverse().forEach(
             block => block.refresh(def)
+        );
+        this.target.parentThatIsA(StageMorph).allContextsInvoking(
+            def.blockSpec(),
+            this.target
+        ).forEach(
+            context => context.changed()
         );
     }
     if (template) {

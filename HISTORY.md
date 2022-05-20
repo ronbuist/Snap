@@ -48,7 +48,15 @@
 * **Translation Updates:**
     * German
 
-### 2022-05-017
+### 2022-05-20
+* byob, objects, threads: update sprite-local custom blocks in data
+
+### 2022-05-19
+* blocks, lists, objects, threads: made global Contexts observable 
+* gui: pushed dev version to 8
+* byob: update global custom blocks in data
+
+### 2022-05-17
 * blocks: added experimental private isChangeableTo(type) method
 * blocks, threads: tweaked programmatic blocks-changing
 
