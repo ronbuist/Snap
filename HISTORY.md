@@ -20,6 +20,7 @@
     * new "set attribute of block" primitive, experimental
     * new "define block" primitive, experimental
     * new localization extension primitives in the "ide" category, hyperized
+    * new extension primitive for importing a costume from a url
     * new support for setting the translation via the API
     * new "Tad" and "Jahrd" costume series, thanks, Meghan and Brian!
 * **Notable Changes:**
@@ -41,12 +42,26 @@
     * fixed an edge case for slot type inferral
     * fixed variadic AND/OR reporters library, thanks, Brian!
     * fixed a pen-size issue in the frequency distribution analysis' graph-plot block, thanks, Brian!
+    * fixed block label color when expanding or inserting variadic infix slots
 * **Documentation Updates:**
     * updated contribution guidelines, thanks, Peter!
     * updated help screens for NUMBERS and FIND FIRST, thanks, Brian, Peter and WarpedWartWars!
     * updated the API documentation for "setTranslation"
 * **Translation Updates:**
     * German
+
+### 2022-05-28
+* new extension primitive for importing a costume from a url
+
+### 2022-05-27
+* blocks, threads: update programmatic custom block scope changes in data references
+
+### 2022-05-25
+* threads: update programmatic custom block-type changes in data references
+* byob: update manual custom block-type changes in data references
+
+### 2022-05-23
+* blocks: fixed block label color when expanding or inserting variadic infix slots 
 
 ### 2022-05-20
 * byob, objects, threads: update sprite-local custom blocks in data

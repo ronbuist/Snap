@@ -65,7 +65,7 @@ StagePickerMorph, CustomBlockDefinition*/
 
 /*jshint esversion: 11, bitwise: false, evil: true*/
 
-modules.threads = '2022-May-20';
+modules.threads = '2022-May-27';
 
 var ThreadManager;
 var Process;
@@ -5639,7 +5639,9 @@ Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
         oldSpec,
         expr,
         def,
+        inData,
         template,
+        oldType,
         type;
 
     this.assertType(block, types);
@@ -5654,9 +5656,13 @@ Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
         if (def.isGlobal) {
             return ide.sprites.asArray().concat([ide.stage]).some((any, idx) =>
                 any.usesBlockInstance(def, false, idx)
+            ) || ide.stage.allBlockInstancesInData(def).some(any =>
+                !any.isUnattached()
             );
         }
-        return rcvr.allDependentInvocationsOf(oldSpec).length > 0;
+        return rcvr.allDependentInvocationsOf(oldSpec).some(any =>
+            !any.isUnattached()
+        );
     }
 
     function remove(arr, value) {
@@ -5664,6 +5670,12 @@ Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
         if (idx > -1) {
             arr.splice(idx, 1);
         }
+    }
+
+    function isMajorTypeChange() {
+        var rep = ['reporter', 'predicate'];
+        return (type === 'command' && rep.includes(oldType)) ||
+            (oldType == 'command' && rep.includes(type));
     }
 
     switch (choice) {
@@ -5698,9 +5710,24 @@ Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
         if (rcvr.allBlockInstances(def).every(block =>
             block.isChangeableTo(type))
         ) {
+            oldType = def.type;
             def.type = type;
         } else {
             throw new Error('cannot change this\nfor a block that is in use');
+        }
+        if (isMajorTypeChange()) {
+            // since we've already scanned all contexts we know that those
+            // that contain block instances only contain single, unattached
+            // ones. Therefore we can simply replace them with new ones.
+            if (def.isGlobal) {
+                ide.stage.allContextsUsing(def).forEach(context =>
+                    context.expression = def.blockInstance()
+                );
+            } else {
+                ide.stage.allContextsInvoking(def.blockSpec(), rcvr).forEach(
+                    context => context.expression = def.blockInstance()
+                );
+            }
         }
         break;
     case 'scope':
@@ -5711,17 +5738,23 @@ Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
         type = +val;
         if (type === 1 && !def.isGlobal) {
             // make global
+            inData = ide.stage.allContextsInvoking(def.blockSpec(), rcvr);
             def.isGlobal = true;
             remove(rcvr.customBlocks, def);
             ide.stage.globalBlocks.push(def);
         } else if (type === 2 && def.isGlobal) {
             // make local
+            inData = ide.stage.allContextsUsing(def);
             def.isGlobal = false;
             remove(ide.stage.globalBlocks, def);
             rcvr.customBlocks.push(def);
         } else {
             return;
         }
+        inData.forEach(context => {
+            context.expression = def.blockInstance();
+            context.changed();
+        });
         break;
     default:
         return;
