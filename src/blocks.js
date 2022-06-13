@@ -161,7 +161,7 @@ CostumeIconMorph, SoundIconMorph, SVG_Costume, embedMetadataPNG*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2022-May-27';
+modules.blocks = '2022-May-29';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -807,7 +807,8 @@ SyntaxElementMorph.prototype.labelParts = {
             'custom?': ['custom?'],
             'global?': ['global?'],
             'type': ['type'],
-            'scope': ['scope']
+            'scope': ['scope'],
+            'slots': ['slots']
         }
     },
     '%byob': {
@@ -818,7 +819,8 @@ SyntaxElementMorph.prototype.labelParts = {
             'definition': ['definition'],
             'category': ['category'],
             'type': ['type'],
-            'scope': ['scope']
+            'scope': ['scope'],
+            'slots': ['slots']
         }
     },
 
@@ -8668,7 +8670,7 @@ ArgMorph.prototype.justDropped = function () {
 // ArgMorph spec extrapolation (for demo purposes)
 
 ArgMorph.prototype.getSpec = function () {
-    return '%s'; // default
+    return this.type === 'list' ? '%l' : '%s'; // default
 };
 
 // ArgMorph menu

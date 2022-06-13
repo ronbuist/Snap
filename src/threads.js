@@ -65,7 +65,7 @@ StagePickerMorph, CustomBlockDefinition*/
 
 /*jshint esversion: 11, bitwise: false, evil: true*/
 
-modules.threads = '2022-May-27';
+modules.threads = '2022-June-02';
 
 var ThreadManager;
 var Process;
@@ -5597,7 +5597,7 @@ Process.prototype.reportBlockAttribute = function (attribute, block) {
 
 Process.prototype.reportBasicBlockAttribute = function (attribute, block) {
     var choice = this.inputOption(attribute),
-        expr;
+        expr, body, slots;
     this.assertType(block, ['command', 'reporter', 'predicate']);
     expr = block.expression;
     switch (choice) {
@@ -5606,12 +5606,19 @@ Process.prototype.reportBasicBlockAttribute = function (attribute, block) {
     case 'definition':
         if (expr.isCustomBlock) {
             if (expr.isGlobal) {
-                return expr.definition.body || new Context();
+                body = expr.definition.body || new Context();
+            } else {
+                body = this.blockReceiver().getMethod(expr.semanticSpec).body ||
+                    new Context();
             }
-            return this.blockReceiver().getMethod(expr.semanticSpec).body ||
-                new Context();
+        } else {
+            body = new Context();
         }
-        return new Context();
+        if (body.expression && body.expression.selector === 'doReport') {
+            return body.expression.inputs()[0].reify(body.inputs);
+        }
+        return body;
+
     case 'category':
         return expr ?
             SpriteMorph.prototype.allCategories().indexOf(expr.category) + 1
@@ -5626,8 +5633,145 @@ Process.prototype.reportBasicBlockAttribute = function (attribute, block) {
         ) + 1;
     case 'scope':
         return expr.isCustomBlock ? (expr.isGlobal ? 1 : 2) : 0;
+    case 'slots':
+        if (expr.isCustomBlock) {
+            slots = [];
+            (expr.isGlobal ?
+                expr.definition
+                : this.blockReceiver().getMethod(expr.semanticSpec)
+            ).declarations.forEach(value => slots.push(value[0]));
+            return new List(slots).map(spec => this.slotType(spec));
+        }
+        return new List(
+            expr.inputs().map(each =>
+                each instanceof ReporterBlockMorph ?
+                    each.getSlotSpec() : each.getSpec()
+            )
+        ).map(spec => this.slotType(spec));
     }
     return '';
+};
+
+Process.prototype.slotType = function (spec) {
+    // answer a number indicating the shape of a slot represented by its spec.
+    // Note: you can also use it to translate mnemonics into slot type numbers
+    var shift = 0,
+        key = spec,
+        num;
+
+    if (spec.startsWith('%')) {
+        key = spec.slice(1);
+        if (key.startsWith('mult')) {
+            shift = 100;
+            key = key.slice(5);
+        }
+    } else if (spec.endsWith('...')) {
+        shift = 100;
+        key = spec.slice(0, -3);
+    }
+
+    num =  {
+        's':        0, // spec
+        // mnemonics:
+        ' ':        0,
+        '_':        0,
+        'a':        0,
+        'any':      0,
+
+        'n':        1, // spec
+        // mnemonics:
+        '#':        1,
+        'num':      1,
+        'number':   1,
+
+        'b':        2, // spec
+        // mnemonics:
+        '?':        2,
+        'bool':     2,
+        'boolean':  2,
+
+        'l':        3, // spec
+        // mnemonics:
+        ':':        3,
+        'lst':      3,
+        'list':     3,
+
+        'txt':      4, // spec
+        'mlt':      4, // spec
+        'code':     4, // spec
+        // mnemonics:
+        'x':        4,
+        'text':     4,
+        'abc':      4,
+
+        'c':        5, // spec
+        'cs':       5, // spec
+        'loop':     5, // spec
+        'ca':       5, // spec
+        // mnemonics:
+        'script':   5,
+        
+        'cmdRing':  6, // spec
+        // mnemonics:
+        'cmd':      6,
+        'command':  6,
+
+        'repRing':  7, // spec
+        // mnemonics:
+        'rep':      7,
+        'reporter': 7,
+
+        'predRing': 8, // spec
+        // mnemonics:
+        'pred':     8,
+        'predicate': 8,
+
+        'anyUE':    9, // spec
+        // mnemonics:
+        'unevaluated': 9,
+
+        'boolUE':   10, // spec
+        // mnemonics: none
+
+        'obj':      11, // spec
+        // mnemonics:
+        'o':        11,
+        'object':   11,
+
+        't':        12, // spec
+        'upvar':    12, // spec
+        // mnemonics:
+        'v':        12,
+        'var':      12
+    }[key];
+    if (num === undefined) {
+        return spec;
+    }
+    return shift + num;
+};
+
+Process.prototype.slotSpec = function (num) {
+    // answer a spec indicating the shape of a slot represented by a number
+    // or by a textual mnemomic
+    var prefix = '',
+        id = this.reportIsA(num, 'text') ? this.slotType(num) : +num,
+        spec;
+
+    if (id >= 100) {
+        prefix = '%mult';
+        id -= 100;
+    }
+
+    spec = ['s', 'n', 'b', 'l', 'mlt', 'cs', 'cmdRing', 'repRing', 'predRing',
+    'anyUE', 'boolUE', 'obj', 'upvar'][id];
+
+    if (spec === undefined) {
+        return null;
+    }
+    if (spec === 'upvar' && id > 100) {
+        return null;
+    }
+    return prefix + '%' + spec;
 };
 
 Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
@@ -5754,6 +5898,20 @@ Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
         inData.forEach(context => {
             context.expression = def.blockInstance();
             context.changed();
+        });
+        break;
+    case 'slots':
+        this.assertType(val, ['list', 'number', 'text']);
+        if (!(val instanceof List)) {
+            val = new List([val]);
+        }
+        def.inputNames().forEach((name, idx) => {
+            var info = def.declarations.get(name),
+                id = val.at(idx + 1);
+            if (id !== '') {
+                info[0] = this.slotSpec(id) || info[0];
+                def.declarations.set(name, info);
+            }
         });
         break;
     default:
