@@ -161,7 +161,7 @@ CostumeIconMorph, SoundIconMorph, SVG_Costume, embedMetadataPNG*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2022-May-29';
+modules.blocks = '2022-June-28';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -808,7 +808,11 @@ SyntaxElementMorph.prototype.labelParts = {
             'global?': ['global?'],
             'type': ['type'],
             'scope': ['scope'],
-            'slots': ['slots']
+            'slots': ['slots'],
+            '~' : null,
+            'defaults': ['defaults'],
+            'menus' : ['menus'],
+            'editables' : ['editables']
         }
     },
     '%byob': {
@@ -820,7 +824,11 @@ SyntaxElementMorph.prototype.labelParts = {
             'category': ['category'],
             'type': ['type'],
             'scope': ['scope'],
-            'slots': ['slots']
+            'slots': ['slots'],
+            '~' : null,
+            'defaults': ['defaults'],
+            'menus' : ['menus'],
+            'editables' : ['editables']
         }
     },
 
@@ -7474,6 +7482,7 @@ RingMorph.prototype.vanishForSimilar = function () {
         block.selector === 'reportJSFunction' ||
         block.selector === 'reportAttributeOf' ||
         block.selector === 'reportCompiled' ||
+        block.selector === 'reportThisContext' ||
         (block instanceof RingMorph)
     ) {
         this.parent.replaceInput(this, block);
@@ -13678,6 +13687,10 @@ ReporterSlotMorph.prototype.isEmptySlot = function () {
 
 ReporterSlotMorph.prototype.fixLayout = function () {
     var contents = this.contents();
+    if (!contents) {
+        contents = this.emptySlot();
+        this.add(contents);
+    }
     this.bounds.setExtent(contents.extent().add(
         this.edge * 2 + this.rfBorder * 2
     ));

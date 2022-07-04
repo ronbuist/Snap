@@ -16,24 +16,29 @@
     * new MOUSE POSITION primitive reporter in the SENSING category
     * new "position" choice in OF reporter's attribute dropdown, reports a list of XY coordinates
     * new "categories" choice in MY reporter's dropdown, reports an ordered list of all category names whose indices match the "category" reported elsewhere
-    * new "label", "type", "scope" and "slots" choices in the OF BLOCK block-attribute reporter's dropdown
+    * new "label", "type", "scope", "slots", "defaults", "menus" and "editables" choices in the OF BLOCK block-attribute reporter's dropdown
     * new "set attribute of block" primitive, experimental
     * new "define block" primitive, experimental
+    * new "delete block" primitive, experimental
+    * new "this script" primitive, experimental
     * new localization extension primitives in the "ide" category, hyperized
     * new extension primitive for importing a costume from a url
+    * new extension primitive for querying all variable names accessible from a specified scope (global, sprite, script)
+    * new extension primitive for querying whether a watcher for a variable by name is shown onstage
     * new support for setting the translation via the API
-    * new "Tad" and "Jahrd" costume series, thanks, Meghan and Brian!
+    * new "Tad", "Jahrd" and "Derec" costume series, thanks, Meghan and Brian!
 * **Notable Changes:**
     * exporting a library includes dependencies (auto-select all referenced blocks)
     * exporting / importing a sprite includes dependencies (global custom blocks and palette categories)
     * imported single scripts are now placed into the hand, for the user to position them in the scripting area 
     * moved "append", "reshape", "combinations" blocks down one group in the palette
     * moved "current date" block up to "timer" group in the palette
+    * moved "attribute of block" block from the sensing category to control
     * include currently dragged sprites in the MY OTHER SPRITES/CLONES lists
     * library import dialog makeover for custom categories and hidden blocks, thanks, Michael!
     * when querying a custom reporter's "definition" property only report its reporter without the REPORT block (if applicable)
     * SciSnap2 extension update (ImagePad), thanks, Eckart!
-    * MQTT extension update, thanks, Simon!
+    * MQTT extension update, thanks, Simon and Xavier!
 * **Notable Fixes:**
     * fixed relabelling "sum", "product", "minimum" and "maximum" reporters
     * fixed relabelling local custom blocks to global ones and vice-versa
@@ -50,6 +55,56 @@
     * updated the API documentation for "setTranslation"
 * **Translation Updates:**
     * German
+
+### 2022-07-01
+* extensions: added a slash-suffix to the EDC url allow-list entry 
+
+### 2022-06-30
+* MQTT extension update, thanks, Simon and Xavier!
+
+### 2022-06-29
+* threads: catch empty options in "menus of blocks" selector
+* threads: added support for "defaults" selector on primitives
+* threads: added support for "editables" selector on primitives
+* threads, byob: added support for "menus" selector on primitives
+* extensions: new extension primitive for querying all variable names accessible from a specified scope (global, sprite, script)
+* extensions: new extension primitive for querying whether a watcher for a variable by name is shown onstage
+* new "Derec" costumes, thanks, Meghan and Brian!
+
+### 2022-06-28
+* blocks, byob, threads: new "menus" selector for block attributes
+* German translation update for "menus"
+* blocks, threads: new "editables" selector for block attributes (indicates read-only input slots)
+* German translation update for "editables"
+* blocks, threads: new "defaults" selector for block attributes
+* blocks, objects, threads: new "delete block" primitive in sensing
+
+### 2022-06-27
+* threads: trim block label before identifying existing definition in DEFINE
+
+### 2022-06-25
+* threads: made slot-type mnemonics case-insensitive
+* threads: made categories case-insensitive
+
+### 2022-06-24
+* threads: made block attribute "type" case-insensitive for textual mnemonics
+* threads: allow variadic slot type declaration using ellipses after type numbers
+* threads: allow case-insensitive text for custom block scope specification
+* threads: update an existing global definition matching DEFINE's label
+* German translation update (for new error message)
+
+### 2022-06-23
+* objects, threads: turned DEFINE into a command block with an upvar, experimental
+* German translation update for the new format of the DEFINE block
+* objects: moved DEFINE primitives to the control category
+* threads: compile block references in DEFINE
+
+### 2022-06-22
+* objects, blocks, threads: new "this script" primitive in sensing, experimental
+* German translation update for "define block"
+
+### 2022-06-21
+* threads: fixed #3061
 
 ### 2022-06-02
 * threads: when querying a custom reporter's "definition" property only report its reporter without the REPORT block (if applicable)

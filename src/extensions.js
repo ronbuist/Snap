@@ -29,12 +29,12 @@
 
 /*global modules, List, StageMorph, Costume, SpeechSynthesisUtterance, Sound,
 IDE_Morph, CamSnapshotDialogMorph, SoundRecorderDialogMorph, isSnapObject, nop,
-Color, Process, contains, localize, SnapTranslator, isString, detect,
-SVG_Costume, newCanvas, Point*/
+Color, Process, contains, localize, SnapTranslator, isString, detect, Point,
+SVG_Costume, newCanvas, WatcherMorph*/
 
 /*jshint esversion: 11, bitwise: false*/
 
-modules.extensions = '2022-May-28';
+modules.extensions = '2022-July-01';
 
 // Global stuff
 
@@ -46,7 +46,7 @@ var SnapExtensions = {
         'libraries/',
         'https://snap.berkeley.edu/',
         'https://ecraft2learn.github.io/ai/', // Uni-Oxford, Ken Kahn
-        'https://microworld.edc.org' // EDC, E. Paul Goldenberg
+        'https://microworld.edc.org/' // EDC, E. Paul Goldenberg
     ]
 };
 
@@ -736,6 +736,23 @@ SnapExtensions.primitives.set(
 );
 
 SnapExtensions.primitives.set(
+    'var_names(scope)',
+    function (scope, proc) {
+        var frame;
+        if (scope === 'script') {
+            frame = proc.context.isInCustomBlock() ?
+                        proc.homeContext.variables
+                        : proc.context.outerContext.variables;
+        } else if (scope === 'sprite') {
+            frame = this.variables;
+        } else {
+            frame = this.globalVariables();
+        }
+        return new List(frame.allNames());
+    }
+);
+
+SnapExtensions.primitives.set(
     'var_delete(name)',
     function (name, proc) {
         var local;
@@ -794,6 +811,27 @@ SnapExtensions.primitives.set(
                 proc.homeContext
                 : proc.context.outerContext
         );
+    }
+);
+
+SnapExtensions.primitives.set(
+    'var_showing(name)?',
+    function (name, proc) {
+        var stage = this.parentThatIsA(StageMorph),
+            frame = proc.context.isInCustomBlock() ?
+                        proc.homeContext.variables
+                        : proc.context.outerContext.variables,
+            target = frame.silentFind(name),
+            watcher;
+
+        if (!target) {return false; }
+        watcher = detect(
+            stage.children,
+            morph => morph instanceof WatcherMorph &&
+                morph.target === target &&
+                    morph.getter === name
+        );
+        return watcher ? watcher.isVisible : false;
     }
 );
 

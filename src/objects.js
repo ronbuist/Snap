@@ -94,7 +94,7 @@ embedMetadataPNG*/
 
 /*jshint esversion: 6*/
 
-modules.objects = '2022-May-20';
+modules.objects = '2022-June-28';
 
 var SpriteMorph;
 var StageMorph;
@@ -914,6 +914,36 @@ SpriteMorph.prototype.initBlocks = function () {
             spec: 'delete this clone'
         },
 
+        // Custom Blocks & introspection
+        doDefineBlock: {
+            type: 'command',
+            category: 'control',
+            spec: 'define %upvar %s %repRing',
+            defaults: [['block']]
+        },
+        doSetBlockAttribute: {
+            type: 'command',
+            category: 'control',
+            spec: 'set %byob of block %repRing to %s',
+            defaults: [['label']]
+        },
+        doDeleteBlock: {
+            type: 'command',
+            category: 'control',
+            spec: 'delete block %repRing'
+        },
+        reportBlockAttribute: {
+            type: 'reporter',
+            category: 'control',
+            spec: '%block of block %repRing',
+            defaults: [['definition']]
+        },
+        reportThisContext: {
+            type: 'reporter',
+            category: 'control',
+            spec: 'this script'
+        },
+
         // Debugging - pausing
         doPauseAll: {
             type: 'command',
@@ -1092,23 +1122,6 @@ SpriteMorph.prototype.initBlocks = function () {
             category: 'sensing',
             spec: 'microphone %audio',
             defaults: [['volume']]
-        },
-        reportBlockAttribute: {
-            type: 'reporter',
-            category: 'sensing',
-            spec: '%block of block %repRing',
-            defaults: [['definition']]
-        },
-        doSetBlockAttribute: {
-            type: 'command',
-            category: 'sensing',
-            spec: 'set %byob of block %repRing to %s',
-            defaults: [['label']]
-        },
-        reportDefineBlock: {
-            type: 'reporter',
-            category: 'sensing',
-            spec: 'define block %s %repRing'
         },
 
         // Operators
@@ -2648,6 +2661,12 @@ SpriteMorph.prototype.blockTemplates = function (
         blocks.push('-');
         blocks.push(block('doPauseAll'));
         blocks.push(block('doSwitchToScene'));
+        blocks.push('-');
+        blocks.push(block('doDefineBlock'));
+        blocks.push(block('doDeleteBlock'));
+        blocks.push(block('doSetBlockAttribute'));
+        blocks.push(block('reportBlockAttribute'));
+        blocks.push(block('reportThisContext'));
 
         // for debugging: ///////////////
         if (devMode) {
@@ -2700,10 +2719,6 @@ SpriteMorph.prototype.blockTemplates = function (
         blocks.push('-');
         blocks.push(block('reportGlobalFlag'));
         blocks.push(block('doSetGlobalFlag'));
-        blocks.push('-');
-        blocks.push(block('reportBlockAttribute'));
-        blocks.push(block('doSetBlockAttribute'));
-        blocks.push(block('reportDefineBlock'));
 
         // for debugging: ///////////////
         if (devMode) {
@@ -9127,6 +9142,12 @@ StageMorph.prototype.blockTemplates = function (
         blocks.push('-');
         blocks.push(block('doPauseAll'));
         blocks.push(block('doSwitchToScene'));
+        blocks.push('-');
+        blocks.push(block('doDefineBlock'));
+        blocks.push(block('doDeleteBlock'));
+        blocks.push(block('doSetBlockAttribute'));
+        blocks.push(block('reportBlockAttribute'));
+        blocks.push(block('reportThisContext'));
 
         // for debugging: ///////////////
         if (this.world().isDevMode) {
@@ -9174,10 +9195,6 @@ StageMorph.prototype.blockTemplates = function (
         blocks.push('-');
         blocks.push(block('reportGlobalFlag'));
         blocks.push(block('doSetGlobalFlag'));
-        blocks.push('-');
-        blocks.push(block('reportBlockAttribute'));
-        blocks.push(block('doSetBlockAttribute'));
-        blocks.push(block('reportDefineBlock'));
 
         // for debugging: ///////////////
         if (this.world().isDevMode) {
