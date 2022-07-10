@@ -80,13 +80,13 @@ BlockLabelPlaceHolderMorph, SpeechBubbleMorph, XML_Element, WatcherMorph, WHITE,
 BlockRemovalDialogMorph,TableMorph, isSnapObject, isRetinaEnabled, SliderMorph,
 disableRetinaSupport, enableRetinaSupport, isRetinaSupported, MediaRecorder,
 Animation, BoxMorph, BlockDialogMorph, RingMorph, Project, ZERO, BLACK,
-BlockVisibilityDialogMorph, ThreadManager*/
+BlockVisibilityDialogMorph, ThreadManager, isString*/
 
 /*jshint esversion: 6*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.gui = '2022-May-19';
+modules.gui = '2022-July-04';
 
 // Declarations
 
@@ -297,6 +297,7 @@ IDE_Morph.prototype.init = function (isAutoFill) {
 
     this.bulkDropInProgress = false; // for handling multiple file-drops
     this.cachedSceneFlag = null; // for importing multiple scenes at once
+    this.isImportingLocalFile = false; // for handling imports of smart pics
 
     // initialize inherited properties:
     IDE_Morph.uber.init.call(this);
@@ -1309,6 +1310,10 @@ IDE_Morph.prototype.createCategories = function () {
     this.categories.buttons = [];
     this.categories.isVisible = flag;
 
+    this.categories.droppedImage = (aCanvas, name, embeddedData) => {
+        this.droppedImage(aCanvas, name, embeddedData, 'categories');
+    };
+
     this.categories.refresh = function () {
         this.buttons.forEach(cat => {
             cat.refresh();
@@ -1592,6 +1597,10 @@ IDE_Morph.prototype.createPalette = function (forSearching) {
         if (droppedMorph instanceof BlockMorph) {
             droppedMorph.destroy();
         }
+    };
+
+    this.palette.droppedImage = (aCanvas, name, embeddedData) => {
+        this.droppedImage(aCanvas, name, embeddedData, 'palette');
     };
 
     this.palette.setWidth(this.logo.width());
@@ -2457,6 +2466,7 @@ IDE_Morph.prototype.reactToWorldResize = function (rect) {
     if (this.filePicker) {
         document.body.removeChild(this.filePicker);
         this.filePicker = null;
+        this.isImportingLocalFile = false;
     }
 };
 
@@ -2471,7 +2481,7 @@ IDE_Morph.prototype.endBulkDrop = function () {
     this.bulkDropInProgress = false;
 };
 
-IDE_Morph.prototype.droppedImage = function (aCanvas, name, embeddedData) {
+IDE_Morph.prototype.droppedImage = function (aCanvas, name, embeddedData, src) {
     var costume = new Costume(
         aCanvas,
         this.currentSprite.newCostumeName(
@@ -2491,6 +2501,21 @@ IDE_Morph.prototype.droppedImage = function (aCanvas, name, embeddedData) {
         return;
     }
 
+    // directly import embedded blocks if the image was dropped on
+    // a scripting area or the palette, otherwise import as costume
+    // (with embedded data)
+    if (!this.isImportingLocalFile &&
+        isString(embeddedData) &&
+        ['scripts', 'palette', 'categories'].includes(src) &&
+        embeddedData[0] === '<' &&
+        ['blocks', 'block', 'script'].some(tag =>
+            embeddedData.slice(1).startsWith(tag))
+    ) {
+        this.isImportingLocalFile = false;
+        return this.droppedText(embeddedData, name, '');
+    }
+
+    this.isImportingLocalFile = false;
     costume.embeddedData = embeddedData || null;
     this.currentSprite.addCostume(costume);
     this.currentSprite.wearCostume(costume);
@@ -4558,6 +4583,7 @@ IDE_Morph.prototype.importLocalFile = function () {
             if (addingScenes) {
                 myself.isAddingNextScene = true;
             }
+            myself.isImportingLocalFile = true;
             world.hand.processDrop(inp.files);
         },
         false
