@@ -21,6 +21,7 @@
     * new "define block" primitive, experimental
     * new "delete block" primitive, experimental
     * new "this script" primitive, experimental
+    * added support to the OF reporter for binding a ring to another one, e.g. THIS SCRIPT, to access its local variables
     * new localization extension primitives in the "ide" category, hyperized
     * new extension primitive for importing a costume from a url
     * new extension primitive for querying all variable names accessible from a specified scope (global, sprite, script)
@@ -55,6 +56,11 @@
     * updated the API documentation for "setTranslation"
 * **Translation Updates:**
     * German
+
+### 2022-07-11
+* extensions: fixed #3065
+* threads: added support to the OF reporter for binding a ring to another one, e.g. THIS SCRIPT to access its local variables
+* byob: embed blocks code into all custom block definition pics
 
 ### 2022-07-04
 * blocks, gui: directly import embedded blocks from a smart pic if the pic is dragged and dropped onto a scripting area or palette - otherwise import the pic as costume (with embedded blocks)
