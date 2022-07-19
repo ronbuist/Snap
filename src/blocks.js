@@ -161,7 +161,7 @@ CostumeIconMorph, SoundIconMorph, SVG_Costume, embedMetadataPNG*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2022-July-04';
+modules.blocks = '2022-July-19';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -603,8 +603,7 @@ SyntaxElementMorph.prototype.labelParts = {
     '%msgHat': {
         type: 'input',
         tags: 'read-only static',
-        menu: 'messagesReceivedMenu',
-        react: 'updateEventUpvar'
+        menu: 'messagesReceivedMenu'
     },
     '%msgSend': {
         type: 'input',
@@ -749,7 +748,7 @@ SyntaxElementMorph.prototype.labelParts = {
         menu: 'shadowedVariablesMenu'
     },
 
-    // code mapping (experimental)
+    // code mapping
 
     '%codeKind': {
         type: 'input',
@@ -1055,17 +1054,17 @@ SyntaxElementMorph.prototype.labelParts = {
     },
     '%send': {
         type: 'multi',
-        slots: '%msgSend',
-        label: 'and send',
+        slots: ['%msgSend', '%s'],
+        label: ['and send', 'with data'],
         tags: 'static',
-        max: 1
+        max: 2
     },
     '%receive': {
         type: 'multi',
-        slots: '%rcv',
-        label: 'to',
+        slots: ['%rcv', '%s'],
+        label: ['to', 'with data'],
         tags: 'static',
-        max: 1
+        max: 2
     },
     '%scriptVars': {
         type: 'multi',
@@ -1396,7 +1395,7 @@ SyntaxElementMorph.prototype.revertToEmptyInput = function (arg) {
                 }
             }
         } else if (this instanceof MultiArgMorph) {
-            deflt = this.labelPart(this.slotSpec);
+            deflt = this.labelPart(this.slotSpecFor(inp));
         } else if (this instanceof ReporterSlotMorph) {
             deflt = this.emptySlot();
         }
@@ -7526,16 +7525,19 @@ RingMorph.prototype.fixBlockColor = function (nearest, isForced) {
 RingMorph.prototype.userMenu = function () {
     var menu = new MenuMorph(this);
     if (this.parent instanceof MultiArgMorph &&
-            this.parentThatIsA(ScriptsMorph)) {
+        this.parentThatIsA(ScriptsMorph)
+    ) {
         if (!this.parent.maxInputs ||
-                (this.parent.inputs().length < this.parent.maxInputs)) {
+            (this.parent.inputs().length < this.parent.maxInputs)
+        ) {
             menu.addItem(
                 'insert a slot',
                 () => this.parent.insertNewInputBefore(this)
             );
         }
         if (this.isEmptySlot() &&
-                this.parent.inputs().length > this.parent.minInputs) {
+            this.parent.inputs().length > this.parent.minInputs
+        ) {
             menu.addItem(
                 'delete slot',
                 () => this.parent.deleteSlot(this)
@@ -8702,9 +8704,12 @@ ArgMorph.prototype.userMenu = function () {
     }
     menu = sm || new MenuMorph(this);
     if (this.parent instanceof MultiArgMorph &&
-            this.parentThatIsA(ScriptsMorph)) {
+        this.parentThatIsA(ScriptsMorph) &&
+        !(this.parent.slotSpec instanceof Array)
+    ) {
         if (!this.parent.maxInputs ||
-                (this.parent.inputs().length < this.parent.maxInputs)) {
+            (this.parent.inputs().length < this.parent.maxInputs)
+        ) {
             menu.addItem(
                 'insert a slot',
                 () => this.parent.insertNewInputBefore(this)
@@ -10218,7 +10223,10 @@ InputSlotMorph.prototype.messagesMenu = function (searching) {
 };
 
 InputSlotMorph.prototype.messagesReceivedMenu = function (searching) {
-    var dict = {'any message': ['any message']},
+    var dict = {
+            '__shout__go__': ['__shout__go__'],
+            'any message': ['any message']
+        },
         rcvr,
         stage,
         allNames;
@@ -12553,8 +12561,8 @@ function MultiArgMorph(
 }
 
 MultiArgMorph.prototype.init = function (
-    slotSpec,
-    labelTxt,
+    slotSpec, // string or array of type strings
+    labelTxt, // string or array of prefix labels
     min,
     eSpec,
     arrowColor,
@@ -12572,7 +12580,9 @@ MultiArgMorph.prototype.init = function (
         i;
 
     this.slotSpec = slotSpec || '%s';
-    this.labelText = localize(labelTxt || '');
+    this.labelText = labelTxt instanceof Array ?
+        labelTxt.map(each => localize(each || ''))
+        : localize(labelTxt || '');
     this.infix = infix || '';
     this.collapse = collapse || '';
     this.minInputs = min || 0;
@@ -12591,7 +12601,11 @@ MultiArgMorph.prototype.init = function (
 
     // label text:
     if (this.labelText || (this.slotSpec === '%cs')) {
-        label = this.labelPart(this.labelText);
+        label = this.labelPart(
+            this.labelText instanceof Array ?
+                this.labelText[0]
+                : this.labelText
+        );
         this.add(label);
         label.hide();
     }
@@ -12848,7 +12862,7 @@ MultiArgMorph.prototype.insertNewInputBefore = function (anInput, contents) {
 // MultiArgMorph arity control:
 
 MultiArgMorph.prototype.addInput = function (contents) {
-    var newPart = this.labelPart(this.slotSpec),
+    var newPart = this.labelPart(this.slotSpecFor(this.inputs().length)),
         i, name, idx;
 
     this.addInfix();
@@ -12879,7 +12893,7 @@ MultiArgMorph.prototype.addInput = function (contents) {
             newPart.setContents('#' + idx);
         }
     } else if (this.elementSpec === '%message') {
-        newPart.setContents(localize('message'));
+        newPart.setContents(localize('data'));
     } else if (this.elementSpec === '%keyName') {
         newPart.setContents(localize('key'));
     }
@@ -12894,9 +12908,14 @@ MultiArgMorph.prototype.addInput = function (contents) {
 };
 
 MultiArgMorph.prototype.addInfix = function () {
-    var infix;
-    if (this.infix === '' || !this.inputs().length) {return; }
-    infix = this.labelPart(this.infix);
+    var infix,
+        label = this.infix ? this.infix
+        : (this.labelText instanceof Array ?
+            this.labelText[this.inputs().length]
+            : '');
+
+    if (label === '' || !this.inputs().length) {return; }
+    infix = this.labelPart(label);
     infix.parent = this;
     this.children.splice(this.children.length - 1, 0, infix);
 };
@@ -12915,7 +12934,9 @@ MultiArgMorph.prototype.removeInput = function () {
             }
         }
     }
-    if (this.infix !== '') {
+    if (this.infix !== '' ||
+        (this.labelText instanceof Array && this.inputs().length)
+    ) {
         if (this.children.length > 1) {
             this.removeChild(this.children[this.children.length - 2]);
         }
@@ -12960,6 +12981,12 @@ MultiArgMorph.prototype.is3ArgRingInHOF = function () {
         }
     }
     return false;
+};
+
+MultiArgMorph.prototype.slotSpecFor = function (index) {
+    return this.slotSpec instanceof Array ?
+        this.slotSpec[index]
+        : this.slotSpec;
 };
 
 // MultiArgMorph events:

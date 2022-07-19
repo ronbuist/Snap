@@ -94,7 +94,7 @@ embedMetadataPNG*/
 
 /*jshint esversion: 6*/
 
-modules.objects = '2022-June-28';
+modules.objects = '2022-July-19';
 
 var SpriteMorph;
 var StageMorph;
@@ -1933,13 +1933,13 @@ SpriteMorph.prototype.init = function (globals) {
     this.isCorpse = false; // indicate whether a sprite/clone has been deleted
     this.cloneOriginName = '';
 
-    // volume and stereo-pan support, experimental:
+    // volume and stereo-pan support
     this.volume = 100;
     this.gainNode = null; // must be lazily initialized in Chrome, sigh...
     this.pan = 0;
     this.pannerNode = null; // must be lazily initialized in Chrome, sigh...
 
-    // frequency player, experimental
+    // frequency player
     this.freqPlayer = null; // Note, to be lazily initialized
 
     // pen color dimensions support
@@ -6445,17 +6445,20 @@ SpriteMorph.prototype.allSendersOf = function (message, receiverName, known) {
 };
 
 SpriteMorph.prototype.allHatBlocksFor = function (message) {
-    if (typeof message === 'number') { message = message.toString(); }
+    if (typeof message === 'number') {
+        message = message.toString();
+    }
     return this.scripts.children.filter(morph => {
         var sel = morph.selector,
             event;
         if (sel) {
             if (sel === 'receiveMessage') {
                 event = morph.inputs()[0].evaluate();
-                return event === message
-                    || (event instanceof Array
-                        && message !== '__shout__go__'
-                        && message !== '__clone__init__');
+                return event === message ||
+                    (event instanceof Array && event[0] == message) ||
+                    (event instanceof Array &&
+                        message !== '__shout__go__' &&
+                        message !== '__clone__init__');
             }
             if (sel === 'receiveGo') {
                 return message === '__shout__go__';
@@ -8107,7 +8110,7 @@ StageMorph.prototype.init = function (globals) {
     this.tempo = 60; // bpm
     this.lastMessage = '';
 
-    // volume and stereo-pan support, experimental:
+    // volume and stereo-pan support
     this.volume = 100;
     this.gainNode = null; // must be lazily initialized in Chrome, sigh...
     this.pan = 0;
@@ -8166,10 +8169,10 @@ StageMorph.prototype.init = function (globals) {
     this.mirrorVideo = true;
     this.videoMotion = null;
 
-    // world map client - experimental, transient
+    // world map client, transient
     this.worldMap = new WorldMap();
 
-    // Snap! API event listeners - experimental, transient
+    // Snap! API event listeners, transient
     this.messageCallbacks = {}; // name : [functions]
 
     StageMorph.uber.init.call(this);
@@ -8822,7 +8825,7 @@ StageMorph.prototype.processKeyPress = function (event) {
 StageMorph.prototype.inspectKeyEvent
     = CursorMorph.prototype.inspectKeyEvent;
 
-StageMorph.prototype.fireChangeOfSceneEvent = function (message) {
+StageMorph.prototype.fireChangeOfSceneEvent = function (message, data) {
     var procs = [];
 
     // remove all clones when the green flag event is broadcast
@@ -8833,12 +8836,23 @@ StageMorph.prototype.fireChangeOfSceneEvent = function (message) {
     this.children.concat(this).forEach(morph => {
         if (isSnapObject(morph)) {
             morph.allHatBlocksFor(message).forEach(block => {
-                var varName, varFrame;
+                var choice, varName, varFrame;
                 if (block.selector === 'receiveMessage') {
                     varName = block.inputs()[1].evaluate()[0];
                     if (varName) {
                         varFrame = new VariableFrame();
-                        varFrame.addVar(varName, message);
+                        choice = block.inputs()[0].evaluate();
+                        if (choice instanceof Array &&
+                                choice[0].indexOf('any') === 0) {
+                            varFrame.addVar(
+                                varName,
+                                data !== '' ?
+                                    new List([message, data])
+                                    : message
+                            );
+                        } else {
+                            varFrame.addVar(varName, data);
+                        }
                     }
                     procs.push(this.threads.startProcess(
                         block,
@@ -8872,13 +8886,29 @@ StageMorph.prototype.fireGreenFlagEvent = function () {
     this.removeAllClones();
     this.children.concat(this).forEach(morph => {
         if (isSnapObject(morph)) {
-            morph.allHatBlocksFor('__shout__go__').forEach(block =>
+            morph.allHatBlocksFor('__shout__go__').forEach(block => {
+                var varName, varFrame;
+
+                if (block.selector === 'receiveMessage') {
+                    varName = block.inputs()[1].evaluate()[0];
+                    if (varName) {
+                        varFrame = new VariableFrame();
+                        varFrame.addVar(varName, ''); // empty
+                    }
+                }
+
                 procs.push(this.threads.startProcess(
                     block,
                     morph,
-                    this.isThreadSafe
-                ))
-            );
+                    this.isThreadSafe,
+                    null, // exportResult (bool)
+                    null, // callback
+                    null, // isClicked
+                    null, // rightAway
+                    null, // atomic
+                    varFrame
+                ));
+            });
         }
     });
     if (ide) {
@@ -8888,7 +8918,7 @@ StageMorph.prototype.fireGreenFlagEvent = function () {
 };
 
 StageMorph.prototype.runStopScripts = function () {
-    // experimental: Allow each sprite to run one last step before termination
+    // Allow each sprite to run one last step before termination
     // usage example: Stop a robot or device associated with the sprite
     this.receiveUserInteraction('stopped', true, true);
     this.children.forEach(morph => {

@@ -6,28 +6,30 @@
     * formatting a list of texts displays it as chat-history in an ASK menu
     * ASK nothing or a falsy value terminates all threads currently displaying a question or waiting to ask one and clears the last "answer"
     * new "Menus" library
+    * broadcasting now supports optional additional data transmission, also when switching scenes 
     * export script (including dependencies) via its context menu
     * export / import sprite-local custom block definitions from the palette
     * export block definitions from inside the block editor
     * embed blocks into costume metadata to be shared as image file
     * exported script pics now always include the actual blocks, which can be extracted from the image inside Snap!
+    * added green flag symbol to "when I receive" dropdown menu, support when clicking the green flag button in the IDE
     * added "combinations" primitive to the palette
     * new POSITION primitive reporter in the MOTION category
     * new MOUSE POSITION primitive reporter in the SENSING category
     * new "position" choice in OF reporter's attribute dropdown, reports a list of XY coordinates
     * new "categories" choice in MY reporter's dropdown, reports an ordered list of all category names whose indices match the "category" reported elsewhere
     * new "label", "type", "scope", "slots", "defaults", "menus" and "editables" choices in the OF BLOCK block-attribute reporter's dropdown
-    * new "set attribute of block" primitive, experimental
-    * new "define block" primitive, experimental
-    * new "delete block" primitive, experimental
-    * new "this script" primitive, experimental
+    * new "set attribute of block" primitive
+    * new "define block" primitive
+    * new "delete block" primitive
+    * new "this script" primitive
     * added support to the OF reporter for binding a ring to another one, e.g. THIS SCRIPT, to access its local variables
     * new localization extension primitives in the "ide" category, hyperized
     * new extension primitive for importing a costume from a url
     * new extension primitive for querying all variable names accessible from a specified scope (global, sprite, script)
     * new extension primitive for querying whether a watcher for a variable by name is shown onstage
     * new support for setting the translation via the API
-    * new "Tad", "Jahrd" and "Derec" costume series, thanks, Meghan and Brian!
+    * new "Tad", "Jahrd", "Derec" and "Jamet" costume series, thanks, Meghan and Brian!
 * **Notable Changes:**
     * exporting a library includes dependencies (auto-select all referenced blocks)
     * exporting / importing a sprite includes dependencies (global custom blocks and palette categories)
@@ -56,6 +58,22 @@
     * updated the API documentation for "setTranslation"
 * **Translation Updates:**
     * German
+
+### 2022-07-19
+* new "Jamet" costumes, thanks, Meghan and Brian!
+* updated sw.js with new costumes
+* updated sw.js with new libraries
+* blocks, objects: added green flag symbol to "when I receive" dropdown menu
+* objects: support "when I receive" hat blocks with (empty) data when clicking the green flag button in the IDE
+* blocks: fixed reverting a mixed-type polyadic sub-slot back to default
+* removed a bunch of "experimental" tags in the code and documentation
+
+### 2022-07-18
+* German translation update: Changed translation of "point in direction" to "setze Richtung auf ... Grad"
+* threads: JSCompiler scope fixes and redesign, thanks, xBZZZZ!
+* blocks: added support for mixed-typed polyadic inputs 
+* threads, blocks, objects, gui: added support for additional data transmission for broadcasts and scene switches
+* German translation update for "with data" and "data" strings
 
 ### 2022-07-11
 * extensions: fixed #3065
