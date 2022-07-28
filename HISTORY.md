@@ -29,6 +29,7 @@
     * new extension primitive for querying all variable names accessible from a specified scope (global, sprite, script)
     * new extension primitive for querying whether a watcher for a variable by name is shown onstage
     * new support for setting the translation via the API
+    * new TuneScope extension and library, thanks, Glen, Eric, and team!
     * new "Tad", "Jahrd", "Derec" and "Jamet" costume series, thanks, Meghan and Brian!
 * **Notable Changes:**
     * exporting a library includes dependencies (auto-select all referenced blocks)
@@ -52,12 +53,25 @@
     * fixed variadic AND/OR reporters library, thanks, Brian!
     * fixed a pen-size issue in the frequency distribution analysis' graph-plot block, thanks, Brian!
     * fixed block label color when expanding or inserting variadic infix slots
+    * framerate is throttled to < 67 fps
 * **Documentation Updates:**
     * updated contribution guidelines, thanks, Peter!
     * updated help screens for NUMBERS and FIND FIRST, thanks, Brian, Peter and WarpedWartWars!
     * updated the API documentation for "setTranslation"
 * **Translation Updates:**
     * German
+
+### 2022-07-23
+* throttle framerate to < 67 fps
+
+### 2022-07-22
+* v8.0.0 release candidate
+
+### 2022-07-21
+* fixed #3072
+
+### 2022-07-20
+* new TuneScope extension and library, thanks, Glen, Eric, and team!
 
 ### 2022-07-19
 * new "Jamet" costumes, thanks, Meghan and Brian!
