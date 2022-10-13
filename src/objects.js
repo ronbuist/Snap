@@ -94,7 +94,7 @@ embedMetadataPNG*/
 
 /*jshint esversion: 6*/
 
-modules.objects = '2022-September-19';
+modules.objects = '2022-September-30';
 
 var SpriteMorph;
 var StageMorph;
@@ -3390,6 +3390,16 @@ SpriteMorph.prototype.emptyCategories = function () {
     return this.categoriesCache;
 };
 
+SpriteMorph.prototype.hasPrimitiveCategories = function () {
+    // - currently unused -
+    // answer <true> if at least one category of primitive blocks is
+    // showing at least one block in the palette, else <false>
+    // in which case the pane with primitive categories can be
+    // hidden altogether
+    var cache = this.emptyCategories();
+    return this.categories.some(prim => cache[prim]);
+};
+
 // SpriteMorph blocks searching
 
 SpriteMorph.prototype.blocksMatching = function (
@@ -6283,6 +6293,17 @@ SpriteMorph.prototype.snapPoint = function(aPoint) {
         (aPoint.x - origin.x) / stage.scale,
         (origin.y - aPoint.y) / stage.scale
     );
+};
+
+SpriteMorph.prototype.worldPoint = function(aSnapPoint) {
+    var stage = this.parentThatIsA(StageMorph);
+    return this.normalizePoint(aSnapPoint)
+        .multiplyBy(stage.scale)
+        .translateBy(stage.center());
+};
+
+SpriteMorph.prototype.normalizePoint = function (snapPoint) {
+    return new Point(snapPoint.x, -snapPoint.y);
 };
 
 // SpriteMorph rotation center / fixation point manipulation
@@ -9580,9 +9601,7 @@ StageMorph.prototype.trailsLogAsSVG = function () {
     };
 };
 
-StageMorph.prototype.normalizePoint = function (snapPoint) {
-    return new Point(snapPoint.x, -snapPoint.y);
-};
+StageMorph.prototype.normalizePoint = SpriteMorph.prototype.normalizePoint;
 
 // StageMorph hiding and showing:
 
@@ -9724,6 +9743,9 @@ StageMorph.prototype.changeVarBlockVisibility
 
 StageMorph.prototype.emptyCategories =
     SpriteMorph.prototype.emptyCategories;
+
+StageMorph.prototype.hasPrimitiveCategories =
+    SpriteMorph.prototype.hasPrimitiveCategories;
 
 // StageMorph neighbor detection
 
@@ -9887,6 +9909,9 @@ StageMorph.prototype.reportThreadCount
 StageMorph.prototype.snapPoint
     = SpriteMorph.prototype.snapPoint;
 
+StageMorph.prototype.worldPoint =
+    SpriteMorph.prototype.worldPoint;
+    
 // StageMorph dimension getters
 
 StageMorph.prototype.xCenter = function () {
