@@ -2,21 +2,27 @@
 
 ## in development:
 * **New Features:**
+    * new PIPE primitive in the control category
     * "touching" predicate now  also accepts a 2-item list representing x/y-coordinates to check for collision with an arbitrary point 
+    * hyper-rays: support lists of relative angles in the left "ray length TO sprite" input slot for instant fields of vision 
+    * new "disable dragging data" preference setting for (kids') MicroWorld creators
     * pixels library: Added command blocks to rename and export costumes
     * new "ide_blocks" extension primitive
     * new extension primitives: "txt_to_utf8(txt)" and "txt_from_utf8(utf8List)", thanks, John!
     * new extension primitive "txt_transform(name, txt)" for encoding, decoding, escaping, unescaping and hashing text
     * new extension primitive "cst_export(cst, name)" for exporting/downloading a costume
+    * extensions can add custom buttons to the palette, thanks, Bernat!
 * **Notable Changes:**
+    * enabled same-named global and sprite-local variables 
     * no more error messages when the number of actual arguments doesn't match the number of implicit parameters
-    * new "docs" folder for documentation files, thanks, Michael!
     * removed empty parens from extension prims "ide_all_blocks", "ide_language" and "ide_translations"
     * hyperized bitwise operators, and gave them more mnemonic block names, thanks, Bernat and Brian!
     * optional inputs "broadcast" and "switch to scene" blocks don't auto-fill when called with an input list
     * round watcher readouts to 6 decimal digits (like Scratch), instead of 9
     * updated "for each" help screen, thanks, Brian!
     * TuneScope extension update, thanks, Harsh, Jo and Glen!
+    * optimized canvas for reading back image data
+    * removed PIPE from all libraries (b/c it is now a built-in primitive in the control blocks palette)
 * **Notable Fixes:**
     * fixed aggressive cache issue, thanks, Michael!
     * fixed exporting pics of morphs in dev mode, thanks, @xBZZZZ!
@@ -30,10 +36,46 @@
     * fixed "obj_name" extension prim to also accept numbers as names
     * fixed "Make Variables" extension for numerical names
     * fixed palette category ghosting update when hiding / unhiding blocks using extension primitives
+    * fixed accidentally drawing unwanted dots when changing a pen color dimension thanks, Joan!
+    * fixed zebra coloring for polyadic read-only input slots 
 * **Documentation Updates:**
+    * new "docs" folder for documentation files, thanks, Michael!
     * new doc for extensions, thanks, Michael!
 * **Translation Updates:**
     * German
+
+### 2022-10-25
+* objects, blocks, tables, scenes, gui: added new "disable dragging data" preference setting for (kids') MicroWorld creators
+* store: made "disable dragging data" setting persistent per scene in project
+* German translation update (for the new "disable dragging data" setting)
+
+### 2022-10-24
+* threads: added optional atomicity-control predicate callbacks to hyperDyadic()
+* blocks, threads: fully hyperized (relation TO object) reporter with lists of relative angles for hyper-rays
+
+### 2022-10-21
+* objects: enabled same-named global and sprite-local variables
+* gui: incremented dev version to 8.1
+* threads: tweaked context binding
+
+### 2022-10-20
+* removed PIPE from the iteration-composition library
+* removed PIPE from the frequency-distribution-analysis library
+* removed PIPE from the bar-charts library
+* removed PIPE from the SciSnap!2Blocks library
+
+### 2022-10-19
+* threads: added ring-type assertion to PIPE primitive
+* extensions, objects, widgets: custom extension buttons for palette categories, thanks, Bernat!
+
+### 2022-10-18
+* blocks: fixed zebra coloring for polyadic read-only input slots
+* morphic: optimized getMinimumFontHeight()
+* morphic: optimized canvas for reading back image data
+* objects, threads: new PIPE primitive in the control category, experimental, not yet sure about this
+
+### 2022-10-17
+* objects: fixed a pen color dimension setting and position-inheritance bug, thanks, Joan!
 
 ### 2022-09-30
 * objects, threads: added support for detecting sprite-collision with an arbitrary coordinate (a list of 2 numerical items representing x and y)

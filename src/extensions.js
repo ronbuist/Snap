@@ -34,13 +34,16 @@ SVG_Costume, newCanvas, WatcherMorph, BlockMorph, HatBlockMorph*/
 
 /*jshint esversion: 11, bitwise: false*/
 
-modules.extensions = '2022-September-23';
+modules.extensions = '2022-October-19';
 
 // Global stuff
 
 var SnapExtensions = {
     primitives: new Map(),
     menus: new Map(),
+    buttons: {
+        palette: []
+    },
     scripts: [],
     urls: [ // allow-list of trusted servers
         'libraries/',
@@ -51,15 +54,17 @@ var SnapExtensions = {
 };
 
 /*
-    SnapExtensions is a set of two global dictionaries of named functions to be
-    used as extension primitives for blocks or dynamic dropdown menus. Block
-    extensions are stored in the "primitives" dictionary of SnapExtensions,
-    dynamic dropdown menus in the "menus" section.
+    SnapExtensions is a set of three global dictionaries of named functions to
+    be used as extension primitives for blocks, dynamic dropdown menus and
+    custom push-buttons inside block palette categories. Block extensions are
+    stored in the "primitives" dictionary of SnapExtensions, dynamic dropdown
+    menus in the "menus" section and custom palette push-buttons in the
+    "buttons" collection.
 
     You can also extend Snap! with your own externally hosted JavaScript file(s)
-    and have them add your own extension primitives and menus to the global
-    SnapExtensions dictionaries. This lets you provide libraries to support
-    special APIs and custom hardware.
+    and have them add your own extension primitives, menus and buttons to the
+    global SnapExtensions dictionaries. This lets you provide libraries to
+    support special APIs and custom hardware.
 
 
     1. Primitives (additional blocks)
@@ -126,7 +131,33 @@ var SnapExtensions = {
       You can access the contents of an input slot by calling "slot.evaluate()"
 
 
-    3. External JavaScript files
+    3. Buttons
+    ==========
+    You can have your extension add buttons at the top of the palette in a
+    particular category. Usually, you will want to add these buttons to the
+    category created by your XML library.
+
+    To do so, just add a button entry in your JS extension file:
+
+    SnapExtensions.buttons.palette.push(
+        {
+            category: 'My Extension',
+            label: 'Do Something',
+            action: function () { doYourStuffWith(this); },
+            hint: 'This button does things',
+            hideable: false
+        }
+    );
+
+    Inside the action, "this" points to the currently selected object, be it a
+    sprite or the Stage.
+
+    The "hideable" attribute defines whether the button will be hidden when
+    turning off "Show buttons" in single palette mode. By default, extension
+    buttons will not be hidden.
+
+
+    4. External JavaScript files
     ============================
     You can provide extensions for your custom hardware or for arbitrary APIs
     or extend Snap! with JavaScript libraries from other parties. You can
@@ -144,7 +175,7 @@ var SnapExtensions = {
     added functions.
 
 
-    4. Miscellaneous
+    5. Miscellaneous
     ================
 
     calling extension primitives in other JavaScript functions
@@ -182,7 +213,6 @@ var SnapExtensions = {
 
     publishing an extension
     -----------------------
-
     When you're ready to publish your extension you can contact us to allow-list
     the url hosting your JS file, or you can send me a Github pull-request to
     include it in the main Snap branch.

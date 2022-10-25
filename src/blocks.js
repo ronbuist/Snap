@@ -161,7 +161,7 @@ CostumeIconMorph, SoundIconMorph, SVG_Costume, embedMetadataPNG*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2022-September-19';
+modules.blocks = '2022-October-25';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -508,7 +508,7 @@ SyntaxElementMorph.prototype.labelParts = {
     },
     '%rel': {
         type: 'input',
-        tags: 'read-only static',
+        tags: 'read-only',
         menu: {
             'distance' : ['distance'],
             'direction' : ['direction'],
@@ -2313,7 +2313,7 @@ SyntaxElementMorph.prototype.showBubble = function (value, exportPic, target) {
         morphToShow.cachedImage = img;
 
         // support costumes to be dragged out of result bubbles:
-        morphToShow.isDraggable = true;
+        morphToShow.isDraggable = !SpriteMorph.prototype.disableDraggingData;
 
         morphToShow.selectForEdit = function () {
             var cst = value.copy(),
@@ -2361,7 +2361,7 @@ SyntaxElementMorph.prototype.showBubble = function (value, exportPic, target) {
         morphToShow = new SymbolMorph('notes', 30);
 
         // support sounds to be dragged out of result bubbles:
-        morphToShow.isDraggable = true;
+        morphToShow.isDraggable = !SpriteMorph.prototype.disableDraggingData;
 
         morphToShow.selectForEdit = function () {
             var snd = value.copy(),
@@ -2412,7 +2412,7 @@ SyntaxElementMorph.prototype.showBubble = function (value, exportPic, target) {
         };
 
         // support blocks to be dragged out of result bubbles:
-        morphToShow.isDraggable = true;
+        morphToShow.isDraggable = !SpriteMorph.prototype.disableDraggingData;
 
         morphToShow.selectForEdit = function () {
             var script = value.toBlock(),
@@ -9955,7 +9955,8 @@ InputSlotMorph.prototype.setContents = function (data) {
 	// data can be a String, Float, or "wish" Block
     var cnts = this.contents(),
         dta = data,
-        isConstant = dta instanceof Array;
+        isConstant = dta instanceof Array,
+        block;
 
 	if (this.selectedBlock) {
    		this.selectedBlock = null;
@@ -9998,8 +9999,11 @@ InputSlotMorph.prototype.setContents = function (data) {
     this.constant = isConstant ? data : null;
 
     // adjust to zebra coloring:
-    if (this.isReadOnly && (this.parent instanceof BlockMorph)) {
-        this.parent.fixLabelColor();
+    if (this.isReadOnly) {
+        block = this.parentThatIsA(BlockMorph); // could be inside a multi-arg
+        if (block) {
+            block.fixLabelColor();
+        }
     }
 
     // run onSetContents if any
