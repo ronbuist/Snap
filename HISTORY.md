@@ -23,7 +23,9 @@
     * TuneScope extension update, thanks, Harsh, Jo and Glen!
     * optimized canvas for reading back image data
     * removed PIPE from all libraries (b/c it is now a built-in primitive in the control blocks palette)
+    * updated "Codification" example project
 * **Notable Fixes:**
+    * improved text wrapping - wrap words that are too wide for a line by letters
     * fixed aggressive cache issue, thanks, Michael!
     * fixed exporting pics of morphs in dev mode, thanks, @xBZZZZ!
     * fixed API->broadcast() to also accept a data payload, thanks, Zak!
@@ -38,11 +40,30 @@
     * fixed palette category ghosting update when hiding / unhiding blocks using extension primitives
     * fixed accidentally drawing unwanted dots when changing a pen color dimension thanks, Joan!
     * fixed zebra coloring for polyadic read-only input slots 
+    * caught an occasional maximimum call-stack size range error when embedding blocks into a scripts pic
+    * improved frame scheduling, prevent excessive frame drops, thanks, SArpnt!
 * **Documentation Updates:**
     * new "docs" folder for documentation files, thanks, Michael!
     * new doc for extensions, thanks, Michael!
 * **Translation Updates:**
     * German
+
+### 2022-11-02
+* updated "Codification" example project
+
+### 2022-11-01
+* morphic: made Canvas GPU/CPU optimization dynamic
+
+### 2022-10-31
+* morphic: improve text wrapping - wrap too wide words by letters
+* morphic: turned Canvas GPU/CPU optimization into a central switch (after discovering severe slowdown in Chrome)
+
+### 2022-10-27
+* threads: tweaked assertType() and allowed empty text as zero-argument for changeVar()
+
+### 2022-10-26
+* blocks: caught an occasional maximimum call-stack size range error when embedding blocks into a scripts pic
+* snap.html: improved frame scheduling, thanks, SArpnt!
 
 ### 2022-10-25
 * objects, blocks, tables, scenes, gui: added new "disable dragging data" preference setting for (kids') MicroWorld creators
