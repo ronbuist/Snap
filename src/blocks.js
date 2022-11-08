@@ -157,11 +157,11 @@ isSnapObject, PushButtonMorph, SpriteIconMorph, Process, AlignmentMorph, List,
 CustomCommandBlockMorph, ToggleButtonMorph, DialMorph, SnapExtensions,
 CostumeIconMorph, SoundIconMorph, SVG_Costume, embedMetadataPNG*/
 
-/*jshint esversion: 6*/
+/*jshint esversion: 11*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2022-October-26';
+modules.blocks = '2022-November-08';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -2595,16 +2595,17 @@ function BlockLabelMorph(
 BlockLabelMorph.prototype.getRenderColor = function () {
     var block = this.parentThatIsA(BlockMorph);
     if (MorphicPreferences.isFlat) {
-        return block.alpha > 0.5 ? this.color
+        return !block || block.alpha > 0.5 ? this.color
             : block.color.solid().darker(Math.max(block.alpha * 200, 0.1));
     }
-    return block.alpha > 0.5 ? this.color
+    return !block || block.alpha > 0.5 ? this.color
         : block.color.solid().lighter(Math.max(block.alpha * 200, 0.1));
 
 };
 
 BlockLabelMorph.prototype.getShadowRenderColor = function () {
-    return this.parentThatIsA(BlockMorph).alpha > 0.5 ?
+    var block = this.parentThatIsA(BlockMorph);
+    return (block && block.alpha > 0.5) ?
         this.shadowColor
             : CLEAR;
 };
@@ -5642,6 +5643,66 @@ BlockMorph.prototype.snap = function () {
     }
 };
 
+// BlockMorph op-sequence analysis
+
+BlockMorph.prototype.unwind = function () {
+    var inp = this.inputs(),
+        current,
+        nxt;
+    if (inp.length) {
+        return inp[0].unwind();
+    }
+    if (this.nextBlock) { // command
+        nxt = this.nextBlock();
+        if (nxt) {
+            return [this].concat(nxt.unwind());
+        }
+        return [this];
+    }
+    // reporter or multi-arg
+    if (this.parent instanceof MultiArgMorph ||
+            this.parent instanceof BlockMorph) {
+        nxt = this.parent;
+        current = this;
+    } else if (this.parent instanceof ArgMorph) {
+        nxt = this.parent.parentThatIsA(BlockMorph);
+        current = this.parent;
+    }
+    if (nxt) {
+        return [this].concat(nxt.unwindAfter(current));
+    }
+    return [this];
+};
+
+BlockMorph.prototype.unwindAfter = function (element) {
+    var idx = this.inputs().indexOf(element),
+        current,
+        nxt;
+    if (idx === this.inputs().length - 1) { // end of block
+        if (this.nextBlock) { // command
+            nxt = this.nextBlock();
+            if (nxt) {
+                return [this].concat(nxt.unwind());
+            }
+            return [this];
+        }
+        // reporter or multi-arg
+        if (this.parent instanceof MultiArgMorph ||
+                this.parent instanceof BlockMorph) {
+            nxt = this.parent;
+            current = this;
+        } else if (this.parent instanceof ArgMorph) {
+            nxt = this.parent.parentThatIsA(BlockMorph);
+            current = this.parent;
+        }
+        if (nxt) {
+            return [this].concat(nxt.unwindAfter(current));
+        }
+        return [this];
+    }
+    return this.inputs()[idx + 1].unwind();
+};
+
 // CommandBlockMorph ///////////////////////////////////////////////////
 
 /*
@@ -7549,6 +7610,35 @@ RingMorph.prototype.userMenu = function () {
     return RingMorph.uber.userMenu.call(this);
 };
 
+// RingMorph op-sequence analysis
+
+RingMorph.prototype.unwind = function () {
+    // start with the formal parameters and then go backwards
+    return this.inputs()[1].unwind();
+};
+
+RingMorph.prototype.unwindAfter = function (element) {
+    // start with the formal parameters and then go backwards
+    var idx = this.inputs().indexOf(element),
+        current,
+        nxt;
+    if (idx < 1) { // begin of ring
+        if (this.parent instanceof MultiArgMorph ||
+                this.parent instanceof BlockMorph) {
+            nxt = this.parent;
+            current = this;
+        } else if (this.parent instanceof ArgMorph) {
+            nxt = this.parent.parentThatIsA(BlockMorph);
+            current = this.parent;
+        }
+        if (nxt) {
+            return [this].concat(nxt.unwindAfter(current));
+        }
+        return [this];
+    }
+    return this.inputs()[idx - 1].unwind();
+};
+
 // ScriptsMorph ////////////////////////////////////////////////////////
 
 /*
@@ -8831,6 +8921,14 @@ ArgMorph.prototype.isEmptySlot = function () {
     return this.type !== null;
 };
 
+// ArgMorph op-sequence analysis
+
+ArgMorph.prototype.unwind = function () {
+    var nxt = this.parent instanceof MultiArgMorph ? this.parent
+                : this.parentThatIsA(BlockMorph);
+    return [this].concat(nxt.unwindAfter(this));
+};
+
 // CommandSlotMorph ////////////////////////////////////////////////////
 
 /*
@@ -8997,6 +9095,21 @@ CommandSlotMorph.prototype.attach = function () {
     if (choices.length > 0) {
         menu.popUpAtHand(this.world());
     }
+};
+
+// CommandSlotMorph op-sequence analysis
+
+CommandSlotMorph.prototype.unwind = function () {
+    var nested = this.nestedBlock(),
+        nxt = this.parent instanceof MultiArgMorph ? this.parent
+                : this.parentThatIsA(BlockMorph);
+    if (nested) {
+        if (this.isStatic) {
+            return nested.unwind().concat(nxt.unwindAfter(this));
+        }
+        return [nested.unwind()].concat(nxt.unwindAfter(this));        
+    }
+    return nxt.unwindAfter(this);
 };
 
 // CommandSlotMorph drawing:
@@ -13204,6 +13317,11 @@ MultiArgMorph.prototype.isEmptySlot = function () {
     return this.canBeEmpty ? this.inputs().length === 0 : false;
 };
 
+// MultiArgMorph op-sequence analysis
+
+MultiArgMorph.prototype.unwind = BlockMorph.prototype.unwind;
+MultiArgMorph.prototype.unwindAfter = BlockMorph.prototype.unwindAfter;
+
 // ArgLabelMorph ///////////////////////////////////////////////////////
 
 /*
@@ -13793,6 +13911,10 @@ ReporterSlotMorph.prototype.fixLayout = function () {
         }
     }
 };
+
+// ReporterSlotMorph op-sequence analysis
+
+ReporterSlotMorph.prototype.unwind = CommandSlotMorph.prototype.unwind;
 
 // RingReporterSlotMorph ///////////////////////////////////////////////////
 
