@@ -94,7 +94,7 @@ embedMetadataPNG, SnapExtensions*/
 
 /*jshint esversion: 6*/
 
-modules.objects = '2022-November-07';
+modules.objects = '2022-November-17';
 
 var SpriteMorph;
 var StageMorph;
@@ -2938,7 +2938,7 @@ SpriteMorph.prototype.deleteVariableButton = function () {
         null,
         function () {
             var menu = new MenuMorph(
-                myself.deleteVariable,
+                (vn) => myself.deleteVariable(vn),
                 null,
                 myself
             );
@@ -3882,18 +3882,155 @@ SpriteMorph.prototype.addVariable = function (name, isGlobal) {
     }
 };
 
-SpriteMorph.prototype.deleteVariable = function (varName) {
+SpriteMorph.prototype.deleteVariable = function (varName, isGlobal) {
     var ide = this.parentThatIsA(IDE_Morph);
-    if (!contains(this.inheritedVariableNames(true), varName)) {
-        // check only shadowed variables
-        this.deleteVariableWatcher(varName);
+    if (isGlobal) {
+        this.deleteVariableWatcher(varName, true);
+        this.globalVariables().deleteVar(varName);
+    } else {
+        if (!contains(this.inheritedVariableNames(true), varName)) {
+            // check only shadowed variables
+            this.deleteVariableWatcher(varName);
+        }
+        this.variables.deleteVar(varName);
     }
-    this.variables.deleteVar(varName);
     if (ide) {
         ide.flushBlocksCache('variables'); // b/c the var could be global
         ide.refreshPalette();
         ide.recordUnsavedChanges();
     }
+};
+
+SpriteMorph.prototype.renameVariable = function (
+    oldName,
+    newName,
+    isGlobal,
+    everywhere // bool - including in all scripts & custom block definitions
+) {
+    var stage = this.parentThatIsA(StageMorph),
+        ide = stage.parentThatIsA(IDE_Morph),
+        oldWatcher = this.findVariableWatcher(oldName, isGlobal),
+        scope = isGlobal ? this.globalVariables() : this.variables,
+        oldValue, newWatcher, targets;
+
+    function renameVariableInCustomBlock(definition) {
+        definition.scripts.forEach(eachScript =>
+            eachScript.refactorVariable(oldName, newName)
+        );
+        if (definition.body) {
+            definition.body.expression.refactorVariable(
+                oldName,
+                newName
+            );
+        }
+    }
+
+    if (contains(scope.names(), newName)) {
+        ide.inform(
+            'Variable exists',
+            'A variable with this name already exists.'
+        );
+        return false;
+
+    }
+    oldValue = scope.getVar(oldName);
+    this.deleteVariable(oldName, isGlobal);
+    this.addVariable(newName, isGlobal);
+    scope.setVar(newName, oldValue);
+
+    if (oldWatcher && oldWatcher.isVisible) {
+        newWatcher = this.toggleVariableWatcher(newName, isGlobal);
+        newWatcher.setPosition(oldWatcher.position());
+    }
+
+    if (everywhere) {
+        targets = isGlobal ?
+            ide.sprites.itemsArray().concat([stage]).filter(sprite =>
+                !contains(sprite.variables.names(), newName))
+            : [this];
+
+        targets.forEach(sprite => {
+            // in scripts
+            sprite.scripts.children.forEach(morph => {
+                if (morph instanceof BlockMorph) {
+                    morph.refactorVariable(oldName, newName);
+                }
+            });
+
+            // in local custom block definitions
+            sprite.customBlocks.forEach(eachBlock =>
+                renameVariableInCustomBlock(eachBlock)
+            );
+        });
+
+        // in global custom block definitions
+        if (isGlobal) {
+            stage.globalBlocks.forEach(eachBlock =>
+                renameVariableInCustomBlock(eachBlock)
+            );
+        }
+
+        // in currently open block editors
+        this.world().children.forEach(morph => {
+            if (morph instanceof BlockEditorMorph) {
+                morph.body.contents.children.forEach(morph => {
+                    if (morph instanceof BlockMorph) {
+                        morph.refactorVariable(oldName, newName);
+                    }
+                });
+            }
+        });
+    }
+
+    ide.flushBlocksCache('variables');
+    ide.refreshPalette();
+    ide.recordUnsavedChanges();
+    return true; // success
+};
+
+SpriteMorph.prototype.flashScope = function (varName, isGlobal) {
+    var scope = this.visibleScopeFor(varName, isGlobal),
+        clr = SyntaxElementMorph.prototype.activeHighlight.darker();
+    scope.flat().forEach(elem => elem.flash(clr));
+};
+
+SpriteMorph.prototype.unflashScope = function (varName, isGlobal) {
+    var scope = this.visibleScopeFor(varName, isGlobal);
+    scope.flat().forEach(elem => elem.unflash());
+};
+
+SpriteMorph.prototype.visibleScopeFor = function (varName, isGlobal) {
+    // private - answer an array of all my syntax elements within the lexical
+    // scope of a given variable name, so they can be highlighted in the IDE.
+    // Note: This is optimized to only answer the *visible* blocks, if you
+    // want to get the full collection of affected elements use
+    // Block >> fullScopeFor(varName) instead.
+
+    var elements = [];
+
+    if (isGlobal && contains(this.variables.names(), varName)) {
+        return elements;
+    }
+
+    // in scripts
+    this.scripts.children.forEach(morph => {
+        if (morph instanceof BlockMorph) {
+            elements.push(morph.fullScopeFor(varName));
+        }
+    });
+
+    // in currently open block editors
+    this.world().children.forEach(morph => {
+        if (morph instanceof BlockEditorMorph) {
+            morph.body.contents.children.forEach(morph => {
+                if (morph instanceof BlockMorph) {
+                    elements.push(morph.fullScopeFor(varName));
+                }
+            });
+        }
+    });
+
+    return elements.flat();
 };
 
 // SpriteMorph costume management
@@ -6668,25 +6805,6 @@ SpriteMorph.prototype.reportThreadCount = function () {
     return 0;
 };
 
-// SpriteMorph variable refactoring
-
-SpriteMorph.prototype.refactorVariableInstances = function (
-    oldName,
-    newName,
-    isGlobal
-) {
-    if (isGlobal && this.hasSpriteVariable(oldName)) {
-        return;
-    }
-
-    this.scripts.children.forEach(child => {
-        if (child instanceof BlockMorph) {
-            child.refactorVarInStack(oldName, newName);
-        }
-    });
-
-};
-
 // SpriteMorph variable watchers (for palette checkbox toggling)
 
 SpriteMorph.prototype.findVariableWatcher = function (varName, isGlobal) {
@@ -6759,13 +6877,13 @@ SpriteMorph.prototype.showingVariableWatcher = function (varName, isGlobal) {
     return false;
 };
 
-SpriteMorph.prototype.deleteVariableWatcher = function (varName) {
+SpriteMorph.prototype.deleteVariableWatcher = function (varName, isGlobal) {
     var stage = this.parentThatIsA(StageMorph),
         watcher;
     if (stage === null) {
         return null;
     }
-    watcher = this.findVariableWatcher(varName);
+    watcher = this.findVariableWatcher(varName, isGlobal);
     if (watcher !== null) {
         watcher.destroy();
     }
@@ -7548,10 +7666,6 @@ SpriteMorph.prototype.deletableVariableNames = function () {
             !contains(locals, each) && !contains(inherited, each)
         )
     );
-};
-
-SpriteMorph.prototype.hasSpriteVariable = function (varName) {
-    return contains(this.variables.names(), varName);
 };
 
 SpriteMorph.prototype.allLocalVariableNames = function (sorted, all) {
@@ -9704,6 +9818,11 @@ StageMorph.prototype.variableBlock = SpriteMorph.prototype.variableBlock;
 StageMorph.prototype.showingWatcher = SpriteMorph.prototype.showingWatcher;
 StageMorph.prototype.addVariable = SpriteMorph.prototype.addVariable;
 StageMorph.prototype.deleteVariable = SpriteMorph.prototype.deleteVariable;
+StageMorph.prototype.renameVariable = SpriteMorph.prototype.renameVariable;
+StageMorph.prototype.flashScope = SpriteMorph.prototype.flashScope;
+StageMorph.prototype.unflashScope = SpriteMorph.prototype.unflashScope;
+StageMorph.prototype.visibleScopeFor = SpriteMorph.prototype.visibleScopeFor;
+ 
 
 // StageMorph Palette Utilities
 
@@ -10232,14 +10351,6 @@ StageMorph.prototype.inheritedBlocks = function () {
     return [];
 };
 
-// StageMorph variable refactoring
-
-StageMorph.prototype.hasSpriteVariable
-    = SpriteMorph.prototype.hasSpriteVariable;
-
-StageMorph.prototype.refactorVariableInstances
-    = SpriteMorph.prototype.refactorVariableInstances;
-
 // StageMorph pen trails as costume
 
 StageMorph.prototype.reportPenTrailsAsCostume = function () {
@@ -10257,7 +10368,7 @@ StageMorph.prototype.globalBlocksSending = function (message, receiverName) {
             def => def.isSending(message, receiverName)
         );
     this.globalBlocks.forEach(def => {
-        if (def.collectDependencies().some(dep => contains(all, dep))) {
+        if (def.collectDependencies([], []).some(dep => contains(all, dep))) {
             all.push(def);
         }
     });
