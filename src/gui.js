@@ -86,7 +86,7 @@ BlockVisibilityDialogMorph, ThreadManager, isString*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.gui = '2022-November-18';
+modules.gui = '2022-November-25';
 
 // Declarations
 
@@ -224,11 +224,11 @@ IDE_Morph.prototype.setDefaultDesign();
 
 // IDE_Morph instance creation:
 
-function IDE_Morph(isAutoFill) {
-    this.init(isAutoFill);
+function IDE_Morph(config = { autofill: true }) {
+    this.init(config);
 }
 
-IDE_Morph.prototype.init = function (isAutoFill) {
+IDE_Morph.prototype.init = function (config) {
     // global font setting
     MorphicPreferences.globalFontFamily = 'Helvetica, Arial';
 
@@ -241,6 +241,8 @@ IDE_Morph.prototype.init = function (isAutoFill) {
     this.cloudMsg = null;
     this.source = null;
     this.serializer = new SnapSerializer();
+    this.config = config;
+    this.version = Date.now(); // for outside observers
 
     // scenes
     this.scenes = new List([new Scene()]);
@@ -275,7 +277,7 @@ IDE_Morph.prototype.init = function (isAutoFill) {
     this.embedOverlay = null;
     this.isEmbedMode = false;
 
-    this.isAutoFill = isAutoFill === undefined ? true : isAutoFill;
+    this.isAutoFill = !!config.autofill;
     this.isAppMode = false;
     this.isSmallStage = false;
     this.filePicker = null;
@@ -692,6 +694,125 @@ IDE_Morph.prototype.openIn = function (world) {
     world.keyboardFocus = this.stage;
     this.warnAboutIE();
     this.warnAboutDev();
+
+    // configure optional settings
+    this.applyConfigurations();
+};
+
+// IDE_Morph configuration
+
+IDE_Morph.prototype.applyConfigurations = function () {
+    var cnf = this.config,
+        refreshLater = false,
+        lang, translation, src,
+
+        refresh = () => {
+            // load project
+            if (cnf.load) {
+                this.getURL(
+                    cnf.load,
+                    projectData => {
+                        if (projectData.indexOf('<snapdata') === 0) {
+                            this.rawOpenCloudDataString(projectData);
+                        } else if (
+                            projectData.indexOf('<project') === 0
+                        ) {
+                            this.rawOpenProjectString(projectData);
+                        }
+                        this.hasChangedMedia = true;
+                        this.applyPaneHidingConfigurations();
+                    }
+                );
+            } else {
+                this.buildPanes();
+                this.fixLayout();
+                this.newProject();
+                this.applyPaneHidingConfigurations();
+            }
+        };
+
+    // design
+    if (cnf.design) {
+        if (cnf.design === 'flat') {
+            this.setFlatDesign();
+        } else if (cnf.design === 'classic') {
+            this.setDefaultDesign();
+        }
+        SpriteMorph.prototype.initBlocks();
+    }
+
+    // interaction mode
+    if (cnf.mode === "presentation") {
+        this.toggleAppMode(true);
+    } else {
+        this.toggleAppMode(false);
+    }
+
+    // blocks size
+    if (cnf.blocksZoom) {
+        SyntaxElementMorph.prototype.setScale(
+            Math.max(1, Math.min(cnf.blocksZoom, 12))
+        );
+        CommentMorph.prototype.refreshScale();
+        SpriteMorph.prototype.initBlocks();
+    }
+
+    // language
+    if (cnf.lang) {
+        lang = cnf.lang;
+        translation = document.getElementById('language');
+
+        // this needs to be directed to something more generic:
+        src = this.resourceURL('locale', 'lang-' + lang + '.js');
+
+        SnapTranslator.unload();
+        if (translation) {
+            document.head.removeChild(translation);
+        }
+        SnapTranslator.language = lang;
+        if (lang !== 'en') {
+            refreshLater = true;
+            translation = document.createElement('script');
+            translation.id = 'language';
+            translation.onload = () => refresh();
+            document.head.appendChild(translation);
+            translation.src = src;
+        }
+    }
+
+    if (!refreshLater) {
+        refresh();
+    }
+
+    // disable cloud access
+    if (cnf.noCloud) {
+        this.cloud.disable();
+    }
+};
+
+IDE_Morph.prototype.applyPaneHidingConfigurations = function () {
+    var cnf = this.config;
+
+    // hide controls
+    if (cnf.hideControls) {
+        this.logo.hide();
+        this.controlBar.hide();
+        window.onbeforeunload = nop;
+    }
+
+    // hide categories
+    if (cnf.hideCategories) {
+        this.categories.hide();
+    }
+
+    // no sprites
+    if (cnf.noSprites) {
+        this.stage.hide();
+        this.corralBar.hide();
+        this.corral.hide();
+        this.spriteBar.hide();
+        this.stageHandle.hide();
+    }
 };
 
 // IDE_Morph construction
@@ -1177,11 +1298,15 @@ IDE_Morph.prototype.createControlBar = function () {
             }
         );
 
-        x = Math.min(
-            startButton.left() - (3 * padding + 2 * stageSizeButton.width()),
-            myself.right() - myself.stage.dimensions.x *
-                (myself.isSmallStage ? myself.stageRatio : 1)
-        );
+        x = startButton.left() - (3 * padding + 2 * stageSizeButton.width());
+        if (!myself.config.noSprites) {
+            x = Math.min(
+                x,
+                myself.right() - myself.stage.dimensions.x *
+                    (myself.isSmallStage ? myself.stageRatio : 1) -
+                    (myself.config.border || 0)
+            );
+        }
         [stageSizeButton, appModeButton].forEach(button => {
                 x += padding;
                 button.setCenter(myself.controlBar.center());
@@ -2240,18 +2365,28 @@ IDE_Morph.prototype.fixLayout = function (situation) {
     // situation is a string, i.e.
     // 'selectSprite' or 'refreshPalette' or 'tabEditor'
     var padding = this.padding,
+        cnf = this.config,
+        border = cnf.border || 0,
         flag,
         maxPaletteWidth;
+
+    // logo
+    this.logo.setLeft(this.left() + border);
+    this.logo.setTop(this.top() + border);
 
     if (situation !== 'refreshPalette') {
         // controlBar
         this.controlBar.setPosition(this.logo.topRight());
-        this.controlBar.setWidth(this.right() - this.controlBar.left());
+        this.controlBar.setWidth(
+            this.right() - this.controlBar.left() - border
+        );
         this.controlBar.fixLayout();
 
         // categories
         this.categories.setLeft(this.logo.left());
-        this.categories.setTop(this.logo.bottom());
+        this.categories.setTop(
+            cnf.hideControls ? this.top() + border : this.logo.bottom()
+        );
         this.categories.setWidth(this.paletteWidth);
         if (this.categories.scroller) {
             this.categories.scroller.setWidth(this.paletteWidth);
@@ -2260,8 +2395,14 @@ IDE_Morph.prototype.fixLayout = function (situation) {
 
     // palette
     this.palette.setLeft(this.logo.left());
-    this.palette.setTop(this.categories.bottom());
-    this.palette.setHeight(this.bottom() - this.palette.top());
+    this.palette.setTop(
+        cnf.hideCategories ?
+            (cnf.hideControls ?
+                this.top() + border
+                : this.controlBar.bottom() + padding)
+            : this.categories.bottom()
+    );
+    this.palette.setHeight(this.bottom() - this.palette.top() - border);
     this.palette.setWidth(this.paletteWidth);
 
     if (situation !== 'refreshPalette') {
@@ -2293,15 +2434,28 @@ IDE_Morph.prototype.fixLayout = function (situation) {
             this.stage.setCenter(this.center());
         } else {
             this.stage.setScale(this.isSmallStage ? this.stageRatio : 1);
-            this.stage.setTop(this.logo.bottom() + padding);
-            this.stage.setRight(this.right());
-            maxPaletteWidth = Math.max(
-                200,
-                this.width() -
-                    this.stage.width() -
-                    this.spriteBar.tabBar.width() -
-                    (this.padding * 2)
+            this.stage.setTop(
+                cnf.hideControls ?
+                    this.top() + border
+                        : this.logo.bottom() + padding
             );
+            this.stage.setRight(this.right() - border);
+            if (cnf.noSprites) {
+                maxPaletteWidth = Math.max(
+                    200,
+                    this.width() -
+                    border * 2
+                );
+            } else {
+                maxPaletteWidth = Math.max(
+                    200,
+                    this.width() -
+                        this.stage.width() -
+                        this.spriteBar.tabBar.width() -
+                        padding * 2 -
+                        border * 2
+                );
+            }
             if (this.paletteWidth > maxPaletteWidth) {
                 this.paletteWidth = maxPaletteWidth;
                 this.fixLayout();
@@ -2311,25 +2465,37 @@ IDE_Morph.prototype.fixLayout = function (situation) {
         }
 
         // spriteBar
-        this.spriteBar.setLeft(this.paletteWidth + padding);
-        this.spriteBar.setTop(this.logo.bottom() + padding);
-        this.spriteBar.setExtent(new Point(
-            Math.max(0, this.stage.left() - padding - this.spriteBar.left()),
-            //this.categories.bottom() - this.spriteBar.top() - padding - 8
-            this.spriteBar.top() + 44
-        ));
+        this.spriteBar.setLeft(this.paletteWidth + padding + border);
+        this.spriteBar.setTop(
+            cnf.hideControls ?
+                this.top() + border
+                    : this.logo.bottom() + padding
+        );
+        this.spriteBar.setWidth(
+            Math.max(0, this.stage.left() - padding - this.spriteBar.left())
+        );
+        this.spriteBar.setHeight(
+            Math.round(this.logo.height() * 2.6)
+        );
         this.spriteBar.fixLayout();
 
         // spriteEditor
         if (this.spriteEditor.isVisible) {
-            this.spriteEditor.setPosition(new Point(
-                this.spriteBar.left(),
-                this.spriteBar.bottom() + padding
-            ));
-            this.spriteEditor.setExtent(new Point(
-                this.spriteBar.width(),
-                this.bottom() - this.spriteEditor.top()
-            ));
+            this.spriteEditor.setLeft(this.spriteBar.left());
+            this.spriteEditor.setTop(
+                cnf.noSprites ?
+                    (cnf.hideControls ? this.top() + border
+                        : this.controlBar.bottom() + padding)
+                    : this.spriteBar.bottom() + padding
+            );
+            this.spriteEditor.setWidth(
+                cnf.noSprites ?
+                    this.right() - this.spriteEditor.left() - border
+                    : this.spriteBar.width()
+            );
+            this.spriteEditor.setHeight(
+                this.bottom() - this.spriteEditor.top() - border
+            );
         }
 
         // corralBar
@@ -2341,7 +2507,7 @@ IDE_Morph.prototype.fixLayout = function (situation) {
         if (!contains(['selectSprite', 'tabEditor'], situation)) {
             this.corral.setPosition(this.corralBar.bottomLeft());
             this.corral.setWidth(this.stage.width());
-            this.corral.setHeight(this.bottom() - this.corral.top());
+            this.corral.setHeight(this.bottom() - this.corral.top() - border);
             this.corral.fixLayout();
         }
     }
@@ -2386,7 +2552,8 @@ IDE_Morph.prototype.setProjectNotes = function (string) {
 // IDE_Morph resizing
 
 IDE_Morph.prototype.setExtent = function (point) {
-    var padding = new Point(430, 110),
+    var cnf = this.config,
+        padding = new Point(430, 110),
         minExt,
         ext,
         maxWidth,
@@ -2404,6 +2571,8 @@ IDE_Morph.prototype.setExtent = function (point) {
                 this.controlBar.height() + 10
             );
         }
+    } else if (cnf.noSprites) {
+        minExt = new Point(100, 100);
     } else {
         if (this.stageRatio > 1) {
             minExt = padding.add(this.stage.dimensions);
@@ -2416,16 +2585,18 @@ IDE_Morph.prototype.setExtent = function (point) {
     ext = point.max(minExt);
 
     // adjust stage ratio if necessary
-    maxWidth = ext.x -
-        (200 + this.spriteBar.tabBar.width() + (this.padding * 2));
-    minWidth = SpriteIconMorph.prototype.thumbSize.x * 3;
-    maxHeight = (ext.y - SpriteIconMorph.prototype.thumbSize.y * 3.5);
-    minRatio = minWidth / this.stage.dimensions.x;
-    maxRatio = Math.min(
-        (maxWidth / this.stage.dimensions.x),
-        (maxHeight / this.stage.dimensions.y)
-    );
-    this.stageRatio = Math.min(maxRatio, Math.max(minRatio, this.stageRatio));
+    if (!cnf.noSprites) {
+        maxWidth = ext.x -
+            (200 + this.spriteBar.tabBar.width() + (this.padding * 2));
+        minWidth = SpriteIconMorph.prototype.thumbSize.x * 3;
+        maxHeight = (ext.y - SpriteIconMorph.prototype.thumbSize.y * 3.5);
+        minRatio = minWidth / this.stage.dimensions.x;
+        maxRatio = Math.min(
+            (maxWidth / this.stage.dimensions.x),
+            (maxHeight / this.stage.dimensions.y)
+        );
+        this.stageRatio = Math.min(maxRatio, Math.max(minRatio, this.stageRatio));
+    }
 
     // apply
     IDE_Morph.uber.setExtent.call(this, ext);
@@ -3110,6 +3281,9 @@ IDE_Morph.prototype.updateChanges = function () {
         (localStorage['-snap-bakuser-'] == this.cloud.username)) {
             localStorage['-snap-bakflag-'] = 'expired';
     }
+
+    // update the version timestamp so my observer can react
+    this.version = Date.now();
 
     // indicate unsaved changes in the project title display
     this.controlBar.updateLabel();
@@ -3987,6 +4161,18 @@ IDE_Morph.prototype.settingsMenu = function () {
         'check to enable\ncamera support',
         true
     );
+    addPreference(
+        'Use CPU for graphics',
+        () => window.keepCanvasInCPU = !window.keepCanvasInCPU,
+        window.keepCanvasInCPU,
+        'EXPERIMENTAL! optimize Canvas2D readback operations\n' +
+            'using the "willReadFrequently" attribute at the expense\n' +
+            'of slowing down rendering in some web browsers',
+        'EXPERIMENTAL! optimize Canvas2D readback operations\n' +
+            'using the "willReadFrequently" attribute at the expense\n' +
+            'of slowing down rendering in some web browsers',
+        true
+    );
     menu.addLine(); // everything visible below is persistent
     addPreference(
         'Blurred shadows',
@@ -4503,8 +4689,13 @@ IDE_Morph.prototype.resourceURL = function () {
     // Take in variadic inputs that represent an a nested folder structure.
     // Method can be easily overridden if running in a custom location.
     // Default Snap! simply returns a path (relative to snap.html)
-    var args = Array.prototype.slice.call(arguments, 0);
-    return args.join('/');
+    // Note: You can specify a base path to the root directory in the
+    // configuration object's "path" property that's passed when creating
+    // an IDE instance, e.g. either a relative one: {path: '../' }
+    // or a full url, depending on where (your) Snap! distro ist hosted
+    var args = Array.prototype.slice.call(arguments, 0),
+        path = this.config.path ? [this.config.path] : [];
+    return path.concat(args).join('/');
 };
 
 IDE_Morph.prototype.getMediaList = function (dirname, callback) {
@@ -11533,7 +11724,9 @@ PaletteHandleMorph.prototype.step = null;
 PaletteHandleMorph.prototype.mouseDownLeft = function (pos) {
     var world = this.world(),
         offset = this.right() - pos.x,
-        ide = this.target.parentThatIsA(IDE_Morph);
+        ide = this.target.parentThatIsA(IDE_Morph),
+        cnf = ide.config,
+        border = cnf.border || 0;
 
     if (!this.target) {
         return null;
@@ -11543,8 +11736,12 @@ PaletteHandleMorph.prototype.mouseDownLeft = function (pos) {
         if (world.hand.mouseButton) {
             newPos = world.hand.bounds.origin.x + offset;
             ide.paletteWidth = Math.min(
-                Math.max(200, newPos),
-                ide.stageHandle.left() - ide.spriteBar.tabBar.width()
+                Math.max(
+                    200, newPos - ide.left() - border * 2),
+                    cnf.noSprites ?
+                        ide.width() - border * 2
+                        : ide.stageHandle.left() -
+                            ide.spriteBar.tabBar.width()
             );
             ide.setExtent(world.extent());
 

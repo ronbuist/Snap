@@ -161,7 +161,7 @@ SVG_Costume, embedMetadataPNG*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2022-November-18';
+modules.blocks = '2022-November-25';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -2915,6 +2915,7 @@ BlockMorph.prototype.userSetSpec = function (spec) {
     tb.fullChanged();
     this.setSpec(spec);
     tb.fullChanged();
+    tb.scriptTarget().parentThatIsA(IDE_Morph).recordUnsavedChanges();
 };
 
 BlockMorph.prototype.buildSpec = function () {
@@ -4530,9 +4531,11 @@ BlockMorph.prototype.mappedCode = function (definitions) {
     }
 
     codeLines = code.split('\n');
-    this.inputs().forEach(input =>
-        parts.push(input.mappedCode(defs).toString())
-    );
+    this.inputs().forEach(input => {
+        var mapped = input.mappedCode(defs);
+        if (isNil(mapped)) {mapped = ''; }
+        parts.push(mapped.toString());
+    });
     parts.forEach(part => {
         var partLines = part.split('\n'),
             placeHolder = '<#' + count + '>',
@@ -4627,6 +4630,8 @@ BlockMorph.prototype.refactorPaletteTemplate = function (everywhere) {
         myself = this;
 
     function renameTo(newName) {
+        newName = newName.trim();
+        if (newName === '') {return; }
         // rename the following blocks in the lexical scope
         if (myself.scriptTarget().renameVariable(
             oldName,

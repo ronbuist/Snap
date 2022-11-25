@@ -317,7 +317,6 @@
                 var	world1, world2;
 
                 window.onload = function () {
-                    disableRetinaSupport();
                     world1 = new WorldMorph(
                         document.getElementById('world1'), false);
                     world2 = new WorldMorph(
@@ -326,7 +325,7 @@
                 };
 
                 function loop() {
-            requestAnimationFrame(loop);
+                    requestAnimationFrame(loop);
                     world1.doOneCycle();
                     world2.doOneCycle();
                 }
@@ -1307,7 +1306,7 @@
 
 /*jshint esversion: 11, bitwise: false*/
 
-var morphicVersion = '2022-November-01';
+var morphicVersion = '2022-November-22';
 var modules = {}; // keep track of additional loaded modules
 var useBlurredShadows = true;
 var keepCanvasInCPU = false;
@@ -1783,7 +1782,7 @@ function enableRetinaSupport() {
                 this.height = prevHeight;
             }
         },
-        configurable: true // [Jens]: allow to be deleted an reconfigured
+        configurable: true // [Jens]: allow to be deleted and reconfigured
     });
 
     Object.defineProperty(canvasProto, 'width', {
@@ -11270,6 +11269,7 @@ HandMorph.prototype.init = function (aWorld) {
     this.temporaries = [];
     this.touchHoldTimeout = null;
     this.contextMenuEnabled = false;
+    this.touchStartPosition = null;
 
     // properties for caching dragged objects:
     this.cachedFullImage = null;
@@ -11516,6 +11516,10 @@ HandMorph.prototype.processTouchStart = function (event) {
     MorphicPreferences.isTouchDevice = true;
     clearInterval(this.touchHoldTimeout);
     if (event.touches.length === 1) {
+        this.touchStartPosition = new Point(
+            event.touches[0].pageX,
+            event.touches[0].pageY
+        );
         this.touchHoldTimeout = setInterval( // simulate mouseRightClick
             () => {
                 this.processMouseDown({button: 2});
@@ -11532,7 +11536,12 @@ HandMorph.prototype.processTouchStart = function (event) {
 };
 
 HandMorph.prototype.processTouchMove = function (event) {
+    var pos = new Point(event.touches[0].pageX, event.touches[0].pageY);
     MorphicPreferences.isTouchDevice = true;
+    if (this.touchStartPosition.distanceTo(pos) <
+            MorphicPreferences.grabThreshold) {
+        return;
+    }
     if (event.touches.length === 1) {
         var touch = event.touches[0];
         this.processMouseMove(touch);
@@ -12085,6 +12094,10 @@ WorldMorph.prototype.init = function (aCanvas, fillPage) {
     this.activeMenu = null;
     this.activeHandle = null;
 
+    if (!fillPage && aCanvas.isRetinaEnabled) {
+        this.initRetina();
+    }
+
     this.initKeyboardHandler();
     this.resetKeyboardHandler();
     this.initEventListeners();
@@ -12213,6 +12226,17 @@ WorldMorph.prototype.fillPage = function () {
     });
 };
 
+WorldMorph.prototype.initRetina = function () {
+    var canvasHeight = this.worldCanvas.getBoundingClientRect().height,
+        canvasWidth = this.worldCanvas.getBoundingClientRect().width;
+    this.worldCanvas.style.width = canvasWidth + 'px';
+    this.worldCanvas.width = canvasWidth;
+    this.setWidth(canvasWidth);
+    this.worldCanvas.style.height = canvasHeight + 'px';
+    this.worldCanvas.height = canvasHeight;
+    this.setHeight(canvasHeight);
+};
+
 // WorldMorph global pixel access:
 
 WorldMorph.prototype.getGlobalPixelColor = function (point) {
@@ -12245,6 +12269,8 @@ WorldMorph.prototype.initKeyboardHandler = function () {
     kbd.world = this;
     kbd.style.zIndex = -1;
     kbd.autofocus = true;
+    kbd.style.width = '0px'
+    kbd.style.height = '0px';
     document.body.appendChild(kbd);
     this.keyboardHandler = kbd;
 

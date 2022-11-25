@@ -16,6 +16,7 @@
     * new extension primitive "txt_transform(name, txt)" for encoding, decoding, escaping, unescaping and hashing text
     * new extension primitive "cst_export(cst, name)" for exporting/downloading a costume
     * extensions can add custom buttons to the palette, thanks, Bernat!
+    * added retina support for inlined morphic worlds, enabling high-res embedding of Snap! components into other websites
 * **Notable Changes:**
     * enabled same-named global and sprite-local variables 
     * no more error messages when the number of actual arguments doesn't match the number of implicit parameters
@@ -26,13 +27,16 @@
     * round watcher readouts to 6 decimal digits (like Scratch), instead of 9
     * updated "for each" help screen, thanks, Brian!
     * TuneScope extension update, thanks, Harsh, Jo and Glen!
+    * SciSnap2 extension update, thanks, Eckart!
     * optimized canvas for reading back image data
     * removed PIPE from all libraries (b/c it is now a built-in primitive in the control blocks palette)
     * updated "Codification" example project
+    * hide "stage selected - no motion primitives" text when hiding the category names in single palette mode
 * **Notable Fixes:**
     * fixed refactoring (renaming) variables (I hope, haha!)
     * fixed displaying message senders
     * improved text wrapping - wrap words that are too wide for a line by letters
+    * improved touch-hold gesture on mobile Android devices, thanks, @ego-lay-atman-bay!
     * fixed aggressive cache issue, thanks, Michael!
     * fixed exporting pics of morphs in dev mode, thanks, @xBZZZZ!
     * fixed API->broadcast() to also accept a data payload, thanks, Zak!
@@ -48,14 +52,54 @@
     * fixed accidentally drawing unwanted dots when changing a pen color dimension thanks, Joan!
     * fixed zebra coloring for polyadic read-only input slots 
     * fixed a label rendering glitch when flashing blocks
+    * prevented variables from being renamed to blanks 
     * caught an occasional maximimum call-stack size range error when embedding blocks into a scripts pic
     * improved frame scheduling, prevent excessive frame drops, thanks, SArpnt!
+    * hiding the keyboard handler text area better by reducing its visible dimensions to zero
+    * fixed a codification glitch for empty list slots
 * **Documentation Updates:**
     * new "docs" folder for documentation files, thanks, Michael!
     * new doc for extensions, thanks, Michael!
 * **Translation Updates:**
     * German
     * Catalan, thanks, Joan!
+
+### 2022-11-25
+* gui: removed clickToRun configuration option (because it's supported by the microworld)
+* gui: simplified configurations application
+* gui: simplified noSprites configuration
+* pyret: new codify tester
+* gui: added version property to IDE for external observers
+* blocks: fixed a codification glitch for empty list slots
+* blocks: record unsaved changes when renaming a variable
+* api: new experimental scriptsAsText() method
+
+### 2022-11-24
+* gui: added configuration option for path (to the host's base directory)
+* gui: added configuration option for border (surrounding the IDE)
+* gui: added configuration option for "hideCategories"
+* gui: added configuratino option for "load"
+* objects: hide "stage selected - no motion primitives" text when hiding the category names in single palette mode
+
+### 2022-11-23
+* set up a test page for the Snap!-Pyret connection project
+* SciSnap2 extension update, thanks, Eckart!
+* gui: added hidden experimental 'Use CPU for graphics' preference setting for Canvas2D "willReadFrequently" property
+* gui: added configuration object to IDE initialization
+* gui: added configuration options for design, mode, blocksZoom, hideControls and noCloud
+* gui: added configuration option for language
+* gui: added configuration option for clickToRun
+* gui: extended hideControls configuration for edit mode
+* gui: added configuration option for noSprites
+* refactored snap.html
+
+### 2022-11-22
+* morphic: added retina support for inlined worlds, enabling high-res embedding of Snap! components into other websites
+* morphic: hide the keyboard handler text area better by reducing its dimensions to zero
+* blocks: prevented variables from being renamed to blanks 
+
+### 2022-11-21
+* morphic: added threshold to right-click on mobile, thanks, @ego-lay-atman-bay
 
 ### 2022-11-18
 * blocks: made formal parameters available in variable-menu dropdowns of all blocks inside of block editors
