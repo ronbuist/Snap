@@ -5,6 +5,7 @@
     * visually highlight variable scope when mouse-hovering over a variable declaration in visible stepping mode
     * visually highlight the variable declaration of variable accessor blocks when mouse-hovering over them in visible stepping mode
     * visually highlight senders / receivers when mouse-hovering over messaging blocks in visible stepping mode
+    * new "When (sprite) is edited" event hat block, supports light user interaction logging
     * new PIPE primitive in the control category
     * "touching" predicate now  also accepts a 2-item list representing x/y-coordinates to check for collision with an arbitrary point 
     * hyper-rays: support lists of relative angles in the left "ray length TO sprite" input slot for instant fields of vision
@@ -15,8 +16,10 @@
     * new extension primitives: "txt_to_utf8(txt)" and "txt_from_utf8(utf8List)", thanks, John!
     * new extension primitive "txt_transform(name, txt)" for encoding, decoding, escaping, unescaping and hashing text
     * new extension primitive "cst_export(cst, name)" for exporting/downloading a costume
+    * codification: calling "code of" on a sprite returns a text version of its scripting area (concatenated codified scripts delimited by empty lines)
     * extensions can add custom buttons to the palette, thanks, Bernat!
     * added retina support for inlined morphic worlds, enabling high-res embedding of Snap! components into other websites
+    * added configuration options for embedding Snap! into other websites
 * **Notable Changes:**
     * enabled same-named global and sprite-local variables 
     * no more error messages when the number of actual arguments doesn't match the number of implicit parameters
@@ -24,6 +27,7 @@
     * hyperized bitwise operators, and gave them more mnemonic block names, thanks, Bernat and Brian!
     * optional inputs "broadcast" and "switch to scene" blocks don't auto-fill when called with an input list
     * made formal parameters available in variable-menu dropdowns of all blocks inside of block editors
+    * hyperized "code of" reporter (codification primitive)
     * round watcher readouts to 6 decimal digits (like Scratch), instead of 9
     * updated "for each" help screen, thanks, Brian!
     * TuneScope extension update, thanks, Harsh, Jo and Glen!
@@ -32,11 +36,14 @@
     * removed PIPE from all libraries (b/c it is now a built-in primitive in the control blocks palette)
     * updated "Codification" example project
     * hide "stage selected - no motion primitives" text when hiding the category names in single palette mode
+    * order "my scripts" list by their top-down position in the scripting area (not by the time of their placement)
+    * don't show "result pic" option in block context menu with "click-to-run" disabled
 * **Notable Fixes:**
     * fixed refactoring (renaming) variables (I hope, haha!)
     * fixed displaying message senders
     * improved text wrapping - wrap words that are too wide for a line by letters
     * improved touch-hold gesture on mobile Android devices, thanks, @ego-lay-atman-bay!
+    * don't show block relabel options that are marked as hidden
     * fixed aggressive cache issue, thanks, Michael!
     * fixed exporting pics of morphs in dev mode, thanks, @xBZZZZ!
     * fixed API->broadcast() to also accept a data payload, thanks, Zak!
@@ -57,12 +64,97 @@
     * improved frame scheduling, prevent excessive frame drops, thanks, SArpnt!
     * hiding the keyboard handler text area better by reducing its visible dimensions to zero
     * fixed a codification glitch for empty list slots
+    * fixed deleting embedded reporters in keyboard-entry mode
+    * fixed zebra coloring when importing a script from file or smart PNG
+    * fixed accidentally triggering "When I receive green flag" events for any broadcast message
 * **Documentation Updates:**
     * new "docs" folder for documentation files, thanks, Michael!
     * new doc for extensions, thanks, Michael!
 * **Translation Updates:**
     * German
     * Catalan, thanks, Joan!
+    * Dutch, thanks, Hans!
+
+### 2022-12-19
+* objects: fixed #3151 (accidentally triggering "When I receive green flag" events for any broadcast message)
+
+### 2022-12-13
+* gui, blocks, objects: refined user-edit events for blocks
+* blocks: refined user-edits for comments: reactToEdit()
+* blocks: refined user-edits for comments: collapse / expand
+* blocks: refined user-edits for comments: grab
+* blocks: refined user-edits for comments: drop
+* blocks: refined user-edits for comments: snap
+* blocks: refined user-edits for comments: delete by dropping on palette
+* blocks: refined user-edits for comments: duplicate
+* blocks: refined user-edits for blocks: snap
+* blocks: refined user-edits for reporter blocks: delete
+
+### 2022-12-11
+* blocks: improved backmapping for codification, still under construction
+* threads: hyperized "code of" reporter (codification primitive)
+* threads: calling "code of" on a sprite returns a text version of its scripting area (concatenated codified scripts delimited by empty lines)
+
+### 2022-12-09
+* gui: added configuration option for "noUserSettings". Sigh.
+
+### 2022-12-08
+* blocks: backmapping for codification, under construction
+
+### 2022-12-06
+* gui: fixed zebra coloring when importing a script from file or smart PNG
+
+### 2022-12-04
+* gui: added configuration option for "zebra". Sigh.
+
+### 2022-12-02
+* gui: added configuration option for "blocksZoom"
+* gui: added user-event for dropping a costume icon in the wardrobe
+* objects: recategorized a costume user event
+* gui: removed redundant "duplicate costume" user event
+* gui: added costume # to "remove costume" user event
+* gui: added "rename sound" user event
+* gui: added "delete sound" user event
+* gui: added user-event for dropping a sound icon in the jukebox
+* blocks: fixed deleting embedded reporters in keyboard-entry mode
+
+### 2022-12-01
+* blocks: don't show "result pic" option in context menu with "click-to-run" disabled
+* blocks: added configuration option for "noRingify"
+* blocks: fixed search
+* objects: fixed an event recording glitch
+* blocks: don't show block relabel options that are marked as hidden
+* byob: fixed disabling relabelling to hidden custom blocks
+* fixed #3139 (Dutch translation)
+
+### 2022-11-30
+* German translation update
+* gui: added configuration option for "noImports"
+* blocks: fixed an event recording glitch
+* blocks, byob, objects: added configuration option for "noOwnBlocks"
+
+### 2022-11-29
+* gui: added configuration option for "noPalette"
+* objects: associate data with the "When (sprite) is edited" event hat block
+* gui, objects: more detailed user-event logging
+* blocks: more detailed user-event logging
+* byob: more detailed user-event logging
+* threads: more detailed user-event logging
+* gui: more detailed user-event logging
+
+### 2022-11-28
+* objects: new recordUserEdit() mechanism
+* objects: migrated objects to new recordUserEdit mechanism
+* blocks: migrated blocks to new recordUserEdit mechanism
+* blocks: migrated custom blocks to new recordUserEdit mechanism
+* threads: migrated processes to new recordUserEdit mechanism
+* extensions: migrated extensions to new recordUserEdit mechanism 
+* gui: migrated IDE to new recordUserEdit mechanism
+* objects, blocks, gui: new "When (sprite) is edited" event hat block
+* api: removed experimental scriptsAsText method (no longer needed)
+
+### 2022-11-26
+* threads: order "my scripts" list by their top-down position in the scripting area
 
 ### 2022-11-25
 * gui: removed clickToRun configuration option (because it's supported by the microworld)
@@ -78,7 +170,7 @@
 * gui: added configuration option for path (to the host's base directory)
 * gui: added configuration option for border (surrounding the IDE)
 * gui: added configuration option for "hideCategories"
-* gui: added configuratino option for "load"
+* gui: added configuration option for "load"
 * objects: hide "stage selected - no motion primitives" text when hiding the category names in single palette mode
 
 ### 2022-11-23

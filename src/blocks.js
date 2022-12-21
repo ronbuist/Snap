@@ -155,13 +155,13 @@ DialogBoxMorph, BlockInputFragmentMorph, PrototypeHatBlockMorph, WHITE, BLACK,
 Costume, IDE_Morph, BlockDialogMorph, BlockEditorMorph, localize, CLEAR, Point,
 isSnapObject, PushButtonMorph, SpriteIconMorph, Process, AlignmentMorph, List,
 ToggleButtonMorph, DialMorph, SnapExtensions, CostumeIconMorph, SoundIconMorph,
-SVG_Costume, embedMetadataPNG*/
+SVG_Costume, embedMetadataPNG, ThreadManager*/
 
 /*jshint esversion: 11*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2022-November-25';
+modules.blocks = '2022-December-13';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -535,6 +535,12 @@ SyntaxElementMorph.prototype.labelParts = {
         type: 'input',
         tags: 'read-only',
         menu: 'objectsMenuWithSelf'
+    },
+    '%edit' : {
+        type: 'input',
+        tags: 'read-only',
+        menu: 'userEditMenu',
+        value: ['any']
     },
     '%col': { // collision detection
         type: 'input',
@@ -2505,6 +2511,16 @@ SyntaxElementMorph.prototype.mappedCode = function (definitions) {
     return result;
 };
 
+SyntaxElementMorph.prototype.elementsAtLOC = function (definitions) {
+    // return an Array indicating which syntax elements are codified at which
+    // line of textual code applying the current mapping
+    var result = this.evaluate();
+    if (result instanceof BlockMorph) {
+        return result.elementsAtLOC(definitions);
+    }
+    return [[this]];
+};
+
 // BlockLabelMorph ///////////////////////////////////////////////
 
 /*
@@ -2911,11 +2927,18 @@ BlockMorph.prototype.setSpec = function (spec, definition) {
 };
 
 BlockMorph.prototype.userSetSpec = function (spec) {
-    var tb = this.topBlock();
+    var tb = this.topBlock(),
+        old = this.abstractBlockSpec();
     tb.fullChanged();
     this.setSpec(spec);
     tb.fullChanged();
-    tb.scriptTarget().parentThatIsA(IDE_Morph).recordUnsavedChanges();
+    tb.scriptTarget().recordUserEdit(
+        'scripts',
+        'block',
+        'label',
+        old,
+        this.abstractBlockSpec()
+    );
 };
 
 BlockMorph.prototype.buildSpec = function () {
@@ -3152,15 +3175,18 @@ BlockMorph.prototype.userMenu = function () {
             renameVar,
             'rename only\nthis reporter'
         );
-    } else if (SpriteMorph.prototype.blockAlternatives[this.selector]) {
-        menu.addItem(
-            'relabel...',
-            () => this.relabel(
-                SpriteMorph.prototype.blockAlternatives[this.selector]
-            )
-        );
     } else if (this.isCustomBlock && this.alternatives) {
         alternatives = this.alternatives();
+        if (alternatives.length > 0) {
+            menu.addItem(
+                'relabel...',
+                () => this.relabel(alternatives)
+            );
+        }
+    } else {
+        alternatives = (SpriteMorph.prototype.blockAlternatives[
+            this.selector] || []).filter(sel =>
+                StageMorph.prototype.hiddenPrimitives[sel] !== true);
         if (alternatives.length > 0) {
             menu.addItem(
                 'relabel...',
@@ -3252,6 +3278,13 @@ BlockMorph.prototype.userMenu = function () {
                     origin: ide.palette,
                     position: ide.palette.center()
                 };
+
+                this.scriptTarget().recordUserEdit(
+                    'scripts',
+                    'block',
+                    'duplicate',
+                    this.abstractBlockSpec()
+                );
             }
         },
         'make a copy\nand pick it up'
@@ -3350,11 +3383,13 @@ BlockMorph.prototype.userMenu = function () {
         (!(top instanceof PrototypeHatBlockMorph) &&
             top.allChildren().some((any) => any.selector === 'doReport'))
     ) {
-        menu.addItem(
-            "result pic...",
-            () => top.exportResultPic(),
-            'save a picture of both\nthis script and its result'
-        );
+        if (!ThreadManager.prototype.disableClickToRun) {
+            menu.addItem(
+                "result pic...",
+                () => top.exportResultPic(),
+                'save a picture of both\nthis script and its result'
+            );
+        }
     }
     if (top instanceof PrototypeHatBlockMorph) {
         menu.addItem(
@@ -3419,7 +3454,10 @@ BlockMorph.prototype.userMenu = function () {
         return menu;
     }
     if (!hasLine) {menu.addLine(); }
-    menu.addItem("ringify", 'ringify');
+    rcvr = rcvr || this.scriptTarget(true);
+    if (rcvr && !rcvr.parentThatIsA(IDE_Morph).config.noRingify) {
+        menu.addItem("ringify", 'ringify');
+    }
     if (StageMorph.prototype.enableCodeMapping) {
         menu.addLine();
         menu.addItem(
@@ -3692,7 +3730,12 @@ BlockMorph.prototype.ringify = function () {
     }
     this.fixBlockColor(null, true);
     top.fullChanged();
-    this.scriptTarget().parentThatIsA(IDE_Morph).recordUnsavedChanges();
+    this.scriptTarget().recordUserEdit(
+        'scripts',
+        'block',
+        'ringify',
+        this.abstractBlockSpec()
+    );
 };
 
 BlockMorph.prototype.unringify = function () {
@@ -3726,7 +3769,12 @@ BlockMorph.prototype.unringify = function () {
     }
     this.fixBlockColor(null, true);
     top.fullChanged();
-    this.scriptTarget().parentThatIsA(IDE_Morph).recordUnsavedChanges();
+    this.scriptTarget().recordUserEdit(
+        'scripts',
+        'block',
+        'unringify',
+        this.abstractBlockSpec()
+    );
 };
 
 BlockMorph.prototype.relabel = function (alternativeSelectors) {
@@ -3757,10 +3805,15 @@ BlockMorph.prototype.relabel = function (alternativeSelectors) {
         menu.addItem(
             block.doWithAlpha(1, () => block.fullImage()),
             () => {
+                var old = this.abstractBlockSpec();
                 this.setSelector(selector, -offset);
-                this.scriptTarget().parentThatIsA(
-                    IDE_Morph
-                ).recordUnsavedChanges();
+                this.scriptTarget().recordUserEdit(
+                    'scripts',
+                    'block',
+                    'relabel',
+                    old,
+                    this.abstractBlockSpec()
+                );
             }
         );
     });
@@ -4618,6 +4671,72 @@ BlockMorph.prototype.codeMappingHeader = function () {
     return hat;
 };
 
+BlockMorph.prototype.elementsAtLOC = function (definitions) {
+    // return an Array indicating which syntax elements are codified at which
+    // line of textual code applying the current mapping
+    var key = this.selector.substr(0, 5) === 'reify' ?
+            'reify' : this.selector,
+        code,
+        codeLines,
+        count = 1,
+        headers,
+        defs = definitions || {},
+        elementLOC,
+        partsLOC = [],
+        insertionIdx,
+        i;
+
+    code = key === 'reportGetVar' ? this.blockSpec
+            : this.isCustomBlock ? this.definition.codeMapping || ''
+                    : StageMorph.prototype.codeMappings[key] || '';
+
+    codeLines = code.split('\n');
+    elementLOC = codeLines.map(() => [this]);
+    partsLOC = this.inputs().map(inp => inp.elementsAtLOC(defs) || []);
+    insertionIdx = 0;
+
+    partsLOC.forEach((partElements, partIdx) => {
+        var placeHolder = '<#' + count + '>',
+            rx = new RegExp(placeHolder, 'g');
+
+        codeLines.forEach((codeLine, i) => {
+            // for every match on each codeline splice in the corresponding
+            // elements in the partsLOC
+            // add the elements of the first partsLOC item to he codelines,
+            // insert the following ones afterwards
+            var matches = (codeLine.match(rx) || []).length;
+            if (matches) {
+                // merge the first line with the current code line's elements
+                (partElements.shift() || []).forEach(each =>
+                    elementLOC[i + insertionIdx].unshift(each)
+                );
+
+                // insert the following lines behind the current code line
+                partElements.forEach(each => {
+                    insertionIdx += 1;
+                    elementLOC.splice(i + insertionIdx, 0, each);
+                });
+            }
+        });
+        count += 1;
+    });
+
+    if (this.nextBlock && this.nextBlock()) { // Command
+        elementLOC.push.apply(elementLOC, this.nextBlock().elementsAtLOC());
+    }
+
+    // prerix with empty lines in case of headers:
+    if (!definitions) { // top-level, add headers
+        headers = this.mappedCode().split('\n').length - elementLOC.length;
+        if (headers) {
+            for (i = 0; i < headers; i += 1) {
+            elementLOC.unshift([]);
+            }
+        }
+    }
+    return elementLOC;
+};
+
 // Variable refactoring
 
 BlockMorph.prototype.refactorPaletteTemplate = function (everywhere) {
@@ -5413,20 +5532,41 @@ BlockMorph.prototype.situation = function () {
 // BlockMorph sticky comments
 
 BlockMorph.prototype.prepareToBeGrabbed = function (hand) {
-    var wrld = hand ? hand.world : this.world();
+    var wrld = hand ? hand.world : this.world(),
+        trgt = this.scriptTarget(true);
+
     this.allInputs().forEach(input =>
         delete input.bindingID
     );
     this.allComments().forEach(comment =>
         comment.startFollowing(this, wrld)
     );
+
+    if (trgt) {
+        trgt.recordUserEdit(
+            'scripts',
+            'block',
+            'grab',
+            this.abstractBlockSpec()
+        );
+    }
 };
 
 BlockMorph.prototype.justDropped = function () {
+    var trgt = this.scriptTarget(true);
     delete this.alpha;
     this.allComments().forEach(comment =>
         comment.stopFollowing()
     );
+
+    if (trgt) {
+        trgt.recordUserEdit(
+            'scripts',
+            'block',
+            'drop',
+            this.abstractBlockSpec()
+        );
+    }
 };
 
 BlockMorph.prototype.allComments = function () {
@@ -5988,9 +6128,13 @@ CommandBlockMorph.prototype.snap = function (hand) {
         }
         return;
     }
-
     scripts.lastDropTarget = target;
-
+    scripts.scriptTarget().recordUserEdit(
+        'scripts',
+        'block',
+        'snap',
+        this.abstractBlockSpec()
+    );
     if (target.loc === 'bottom') {
         if (target.type === 'slot') {
             this.removeHighlight();
@@ -6094,7 +6238,9 @@ CommandBlockMorph.prototype.isStop = function () {
 // CommandBlockMorph deleting
 
 CommandBlockMorph.prototype.userDestroy = function () {
-    var target = this.selectForEdit(); // enable copy-on-edit
+    var target = this.selectForEdit(), // enable copy-on-edit
+        rcvr = this.scriptTarget(true);
+
     if (target !== this) {
         return this.userDestroy.call(target);
     }
@@ -6130,12 +6276,22 @@ CommandBlockMorph.prototype.userDestroy = function () {
     if (parent) {
         parent.reactToGrabOf(this); // fix highlight
     }
+
+    if (rcvr) {
+        rcvr.recordUserEdit(
+            'scripts',
+            'block',
+            'delete',
+            this.abstractBlockSpec()
+        );
+    }
 };
 
 CommandBlockMorph.prototype.userDestroyJustThis = function () {
     // delete just this one block, reattach next block to the previous one,
     var scripts = this.parentThatIsA(ScriptsMorph),
-        nb = this.nextBlock();
+        nb = this.nextBlock(),
+        trgt = this.scriptTarget(true);
 
     // for undrop / redrop
     if (scripts) {
@@ -6147,6 +6303,15 @@ CommandBlockMorph.prototype.userDestroyJustThis = function () {
     }
 
     this.extract();
+
+    if (trgt) {
+        trgt.recordUserEdit(
+            'scripts',
+            'block',
+            'delete',
+            this.abstractBlockSpec()
+        );
+    }
 };
 
 CommandBlockMorph.prototype.userExtractJustThis = function () {
@@ -6168,7 +6333,9 @@ CommandBlockMorph.prototype.extract = function () {
         nb = this.nextBlock(),
         above,
         parent = this.parentThatIsA(SyntaxElementMorph),
-        cslot = this.parentThatIsA(CSlotMorph, RingReporterSlotMorph);
+        cslot = this.parentThatIsA(CSlotMorph, RingReporterSlotMorph),
+        trgt = this.scriptTarget(true);
+
 
     this.topBlock().fullChanged();
     if (this.parent) {
@@ -6179,6 +6346,14 @@ CommandBlockMorph.prototype.extract = function () {
     } else if (cs && (cs.nestedBlock() === this)) {
         above = cs;
         this.prepareToBeGrabbed(); // restore ring reporter slot, if any
+    }
+    if (trgt) {
+        trgt.recordUserEdit(
+            'scripts',
+            'block',
+            'extract',
+            this.abstractBlockSpec()
+        );
     }
     if (ide) {
         // also stop all active processes hatted by this block
@@ -6835,6 +7010,12 @@ ReporterBlockMorph.prototype.snap = function (hand) {
         if (this.snapSound) {
             this.snapSound.play();
         }
+        scripts.scriptTarget().recordUserEdit(
+            'scripts',
+            'block',
+            'snap',
+            this.abstractBlockSpec()
+        );
     }
     this.fixBlockColor();
     ReporterBlockMorph.uber.snap.call(this);
@@ -6853,7 +7034,9 @@ ReporterBlockMorph.prototype.prepareToBeGrabbed = function (handMorph) {
         this.setPosition(oldPos);
     }
     ReporterBlockMorph.uber.prepareToBeGrabbed.call(this, handMorph);
-    handMorph.alpha = this.alpha < 1 ? 1 : 0.85;
+    if (handMorph) {
+        handMorph.alpha = this.alpha < 1 ? 1 : 0.85;
+    }
     this.cachedSlotSpec = null;
 };
 
@@ -6959,7 +7142,8 @@ ReporterBlockMorph.prototype.mouseClickLeft = function (pos) {
 
 ReporterBlockMorph.prototype.userDestroy = function () {
     // make sure to restore default slot of parent block
-    var target = this.selectForEdit(); // enable copy-on-edit
+    var target = this.selectForEdit(), // enable copy-on-edit
+        rcvr = this.scriptTarget(true);
     if (target !== this) {
         return this.userDestroy.call(target);
     }
@@ -6976,6 +7160,15 @@ ReporterBlockMorph.prototype.userDestroy = function () {
     this.topBlock().fullChanged();
     this.prepareToBeGrabbed(this.world().hand);
     this.destroy();
+
+    if (rcvr) {
+        rcvr.recordUserEdit(
+            'scripts',
+            'block',
+            'delete',
+            this.abstractBlockSpec()
+        );
+    }
 };
 
 // ReporterBlockMorph drawing:
@@ -8148,29 +8341,31 @@ ScriptsMorph.prototype.userMenu = function () {
                     + ' ' + obj.exemplar.name
             );
         }
-        menu.addItem(
-            'make a block...',
-            () => new BlockDialogMorph(
-                null,
-                definition => {
-                    if (definition.spec !== '') {
-                        if (definition.isGlobal) {
-                            stage.globalBlocks.push(definition);
-                        } else {
-                            obj.customBlocks.push(definition);
+        if (!ide.config.noOwnBlocks) {
+            menu.addItem(
+                'make a block...',
+                () => new BlockDialogMorph(
+                    null,
+                    definition => {
+                        if (definition.spec !== '') {
+                            if (definition.isGlobal) {
+                                stage.globalBlocks.push(definition);
+                            } else {
+                                obj.customBlocks.push(definition);
+                            }
+                            ide.flushPaletteCache();
+                            ide.refreshPalette();
+                            new BlockEditorMorph(definition, obj).popUp();
                         }
-                        ide.flushPaletteCache();
-                        ide.refreshPalette();
-                        new BlockEditorMorph(definition, obj).popUp();
-                    }
-                },
-                this
-            ).prompt(
-                'Make a block',
-                null,
-                this.world()
-            )
-        );
+                    },
+                    this
+                ).prompt(
+                    'Make a block',
+                    null,
+                    this.world()
+                )
+            );
+        }
     }
     return menu;
 };
@@ -8499,8 +8694,7 @@ ScriptsMorph.prototype.clearDropInfo = function () {
 
 ScriptsMorph.prototype.recordDrop = function (lastGrabOrigin) {
     // support for "undrop" / "redrop"
-    var ide, blockEditor,
-        record = {
+    var record = {
             lastDroppedBlock: this.lastDroppedBlock,
             lastReplacedInput: this.lastReplacedInput,
             lastDropTarget: this.lastDropTarget,
@@ -8521,18 +8715,6 @@ ScriptsMorph.prototype.recordDrop = function (lastGrabOrigin) {
     }
     this.dropRecord = record;
     this.updateToolbar();
-
-    // notify the IDE of an unsaved user edit
-    ide = this.parentThatIsA(IDE_Morph);
-    if (!ide) {
-        blockEditor = this.parentThatIsA(BlockEditorMorph);
-        if (blockEditor) {
-            ide = blockEditor.target.parentThatIsA(IDE_Morph);
-        }
-    }
-    if (ide) {
-        ide.recordUnsavedChanges();
-    }
 };
 
 ScriptsMorph.prototype.addToolbar = function () {
@@ -8765,6 +8947,42 @@ ScriptsMorph.prototype.scriptTarget = function () {
     throw new Error('script target cannot be found for orphaned scripts');
 };
 
+// ScriptsMorph - codification
+
+ScriptsMorph.prototype.elementsAtLOC = function () {
+    // return an Array indicating which syntax elements are codified at which
+    // line of textual code applying the current mapping
+    var scripts = this.sortedElements().filter(each =>
+            each instanceof BlockMorph).map(block => block.elementsAtLOC()),
+        loc = [];
+
+    scripts.forEach(scr => {
+        scr.forEach(line => loc.push(line));
+        loc.push([]);
+    });
+
+    return loc;
+};
+
+ScriptsMorph.prototype.flashLOC = function (start, end = start) {
+    // highlight all syntax elements located in the textual code indicated
+    // by start and end line numbers. End is optional.
+    var loc = this.elementsAtLOC(),
+        i;
+    this.unflash();
+    for (i = start; i <= end; i += 1) {
+        loc[i - 1].forEach(elem => elem.flash());
+    }
+};
+
+ScriptsMorph.prototype.unflash = function () {
+    this.forAllChildren(each => {
+        if (each instanceof SyntaxElementMorph && each.unflash) {
+            each.unflash();
+        }
+    });
+
+};
 
 // ArgMorph //////////////////////////////////////////////////////////
 
@@ -9608,6 +9826,36 @@ CSlotMorph.prototype.mappedCode = function (definitions) {
     return codeLines.join('\n');
 };
 
+CSlotMorph.prototype.elementsAtLOC = function (definitions) {
+    // return an Array indicating which syntax elements are codified at which
+    // line of textual code applying the current mapping
+    var code = StageMorph.prototype.codeMappings.reify || '<#1>',
+        codeLines = code.split('\n'),
+        nested = this.nestedBlock(),
+        rx = new RegExp('<#1>', 'g'),
+        elementLOC = codeLines.map(() => [this]),
+        partElements = nested instanceof SyntaxElementMorph ?
+                nested.elementsAtLOC(definitions) : [],
+        insertionIdx = 0;
+
+    codeLines.forEach((codeLine, i) => {
+        var matches = (codeLine.match(rx) || []).length;
+        if (matches) {
+            // merge the first line with the current code line's elements
+            (partElements.shift() || []).forEach(each =>
+                elementLOC[i + insertionIdx].unshift(each)
+            );
+
+            // insert the following lines behind the current code line
+            partElements.forEach(each => {
+                insertionIdx += 1;
+                elementLOC.splice(i + insertionIdx, 0, each);
+            });
+        }
+    });
+    return elementLOC;
+};
+
 // CSlotMorph layout:
 
 CSlotMorph.prototype.fixLayout = function () {
@@ -10155,10 +10403,16 @@ InputSlotMorph.prototype.setContents = function (data) {
 InputSlotMorph.prototype.userSetContents = function (aStringOrFloat) {
     // enable copy-on-edit for inherited scripts
     var block = this.parentThatIsA(BlockMorph),
-        ide = this.parentThatIsA(IDE_Morph);
+        trgt = block.scriptTarget(true);
     this.selectForEdit().setContents(aStringOrFloat);
-    if (ide && !block.isTemplate) {
-        ide.recordUnsavedChanges();
+    if (trgt && !block.isTemplate) {
+        trgt.recordUserEdit(
+            'scripts',
+            'input slot',
+            'set',
+            block.abstractBlockSpec(),
+            aStringOrFloat
+        );
     }
 };
 
@@ -10188,7 +10442,7 @@ InputSlotMorph.prototype.menuFromDict = function (
     	myself = this,
         selector,
         block = this.parentThatIsA(BlockMorph),
-        ide = this.parentThatIsA(IDE_Morph),
+        trgt = block.scriptTarget(true),
         menu = new MenuMorph(
             this.userSetContents,
             null,
@@ -10199,8 +10453,14 @@ InputSlotMorph.prototype.menuFromDict = function (
 	function update(num) {
     	myself.setContents(num);
         myself.reactToSliderEdit();
-        if (ide && !block.isTemplate) {
-            ide.recordUnsavedChanges();
+        if (trgt && !block.isTemplate) {
+            trgt.recordUserEdit(
+                'scripts',
+                'input slot',
+                'set choice',
+                block.abstractBlockSpec(),
+                num
+            );
         }
  	}
 
@@ -10616,11 +10876,31 @@ InputSlotMorph.prototype.objectsMenu = function (searching, includeMyself) {
 };
 
 InputSlotMorph.prototype.receiversMenu = function (searching) {
-    var rcvr = this.parentThatIsA(BlockMorph).scriptTarget(),
-        stage = rcvr.parentThatIsA(StageMorph),
-        dict = {all: ['all']};
+    var dict = {all: ['all']},
+    rcvr,
+    stage;
 
     if (searching) {return dict; }
+    rcvr = this.parentThatIsA(BlockMorph).scriptTarget();
+    stage = rcvr.parentThatIsA(StageMorph);
+    dict['~'] = null;
+    dict[stage.name] = stage.name;
+    stage.children.forEach(morph => {
+        if (morph instanceof SpriteMorph && !morph.isTemporary) {
+            dict[morph.name] = morph.name;
+        }
+    });
+    return dict;
+};
+
+InputSlotMorph.prototype.userEditMenu = function (searching) {
+    var dict = {'anything': ['anything']},
+        rcvr,
+        stage;
+
+    if (searching) {return dict; }
+    rcvr = this.parentThatIsA(BlockMorph).scriptTarget();
+    stage = rcvr.parentThatIsA(StageMorph);
     dict['~'] = null;
     dict[stage.name] = stage.name;
     stage.children.forEach(morph => {
@@ -11063,10 +11343,16 @@ InputSlotMorph.prototype.reactToKeystroke = function () {
 
 InputSlotMorph.prototype.reactToEdit = function () {
     var block = this.parentThatIsA(BlockMorph),
-        ide = this.parentThatIsA(IDE_Morph);
+        trgt = block.scriptTarget(true);
     this.contents().clearSelection();
-    if (ide && !block.isTemplate) {
-        ide.recordUnsavedChanges();
+    if (trgt && !block.isTemplate) {
+        trgt.recordUserEdit(
+            'scripts',
+            'input slot',
+            'edit',
+            block.abstractBlockSpec(),
+            this.evaluate()
+        );
     }
 };
 
@@ -11830,20 +12116,26 @@ BooleanSlotMorph.prototype.setContents = function (boolOrNull) {
 BooleanSlotMorph.prototype.toggleValue = function () {
     var target = this.selectForEdit(),
         block = this.parentThatIsA(BlockMorph),
+        sprite,
         ide;
     if (target !== this) {
         return this.toggleValue.call(target);
     }
-    ide = this.parentThatIsA(IDE_Morph);
     this.value = this.nextValue();
-    if (ide) {
-        if (!block.isTemplate) {
-            ide.recordUnsavedChanges();
-        }
-        if (!ide.isAnimating) {
-            this.rerender();
-            return;
-        }
+    sprite = block.scriptTarget();
+    if (!block.isTemplate) {
+        sprite.recordUserEdit(
+            'scripts',
+            'boolean slot',
+            'toggle',
+            block.abstractBlockSpec(),
+            this.value
+        );
+    }
+    ide = sprite.parentThatIsA(IDE_Morph);
+    if (ide && !ide.isAnimating) {
+        this.rerender();
+        return;
     }
     this.progress = 3;
     this.rerender();
@@ -13206,7 +13498,8 @@ MultiArgMorph.prototype.slotSpecFor = function (index) {
 MultiArgMorph.prototype.mouseClickLeft = function (pos) {
     // prevent expansion in the palette
     // (because it can be hard or impossible to collapse again)
-    var ide = this.parentThatIsA(IDE_Morph);
+    var block = this.parentThatIsA(BlockMorph),
+        sprite = block.scriptTarget();
     if (!this.parentThatIsA(ScriptsMorph)) {
         this.escalateEvent('mouseClickLeft', pos);
         return;
@@ -13225,9 +13518,12 @@ MultiArgMorph.prototype.mouseClickLeft = function (pos) {
                 target.addInput();
             }
         }
-        if (ide) {
-            ide.recordUnsavedChanges();
-        }
+        sprite.recordUserEdit(
+            'scripts',
+            'poly slot',
+            'expand',
+            block.abstractBlockSpec()
+        );
     } else if (
         leftArrow.bounds.expandBy(this.fontSize / 3).containsPoint(pos)
     ) {
@@ -13236,9 +13532,12 @@ MultiArgMorph.prototype.mouseClickLeft = function (pos) {
                 target.removeInput();
             }
         }
-        if (ide) {
-            ide.recordUnsavedChanges();
-        }
+        sprite.recordUserEdit(
+            'scripts',
+            'poly slot',
+            'collapse',
+            block.abstractBlockSpec()
+        );
     } else {
         target.escalateEvent('mouseClickLeft', pos);
     }
@@ -14521,11 +14820,19 @@ CommentMorph.prototype.text = function () {
 };
 
 CommentMorph.prototype.toggleExpand = function () {
+    var scripts = this.parentThatIsA(ScriptsMorph);
     this.isCollapsed = !this.isCollapsed;
     this.fixLayout();
     this.align();
     if (!this.isCollapsed) {
         this.comeToFront();
+    }
+    if (scripts) {
+        scripts.scriptTarget().recordUserEdit(
+            'scripts',
+            'comment',
+            this.isCollapsed ? 'collapse' : 'expand'
+        );
     }
 };
 
@@ -14542,17 +14849,24 @@ CommentMorph.prototype.mouseClickLeft = function () {
     this.comeToFront();
 };
 
+CommentMorph.prototype.reactToEdit = function () {
+    var scripts = this.parentThatIsA(ScriptsMorph);
+    if (scripts) {
+        scripts.scriptTarget().recordUserEdit(
+            'scripts',
+            'comment',
+            'edit'
+        );
+    }
+};
+
 // CommentMorph layout:
 
 CommentMorph.prototype.layoutChanged = function () {
     // react to a change of the contents area
-    var ide = this.parentThatIsA(IDE_Morph);
     this.fixLayout();
     this.align();
     this.comeToFront();
-    if (ide) {
-        ide.recordUnsavedChanges();
-    }
 };
 
 CommentMorph.prototype.fixLayout = function () {
@@ -14620,6 +14934,7 @@ CommentMorph.prototype.userMenu = function () {
             var dup = this.fullCopy(),
                 ide = this.parentThatIsA(IDE_Morph),
                 blockEditor = this.parentThatIsA(BlockEditorMorph),
+                scripts = this.parentThatIsA(ScriptsMorph),
                 world = this.world();
             dup.pickUp(world);
             // register the drop-origin, so the comment can
@@ -14633,6 +14948,13 @@ CommentMorph.prototype.userMenu = function () {
                     origin: ide.palette,
                     position: ide.palette.center()
                 };
+            }
+            if (scripts) {
+                scripts.scriptTarget().recordUserEdit(
+                    'scripts',
+                    'comment',
+                    'duplicate'
+                );
             }
         },
         'make a copy\nand pick it up'
@@ -14656,6 +14978,14 @@ CommentMorph.prototype.userMenu = function () {
 };
 
 CommentMorph.prototype.userDestroy = function () {
+    var scripts = this.parentThatIsA(ScriptsMorph);
+    if (scripts) {
+        scripts.scriptTarget().recordUserEdit(
+            'scripts',
+            'comment',
+            'delete'
+        );
+    }
     this.selectForEdit().destroy(); // enable copy-on-edit
 };
 
@@ -14681,6 +15011,14 @@ CommentMorph.prototype.show = function () {
 
 CommentMorph.prototype.prepareToBeGrabbed = function (hand) {
     // disassociate from the block I'm posted to
+    var scripts = this.parentThatIsA(ScriptsMorph);
+    if (scripts) {
+        scripts.scriptTarget().recordUserEdit(
+            'scripts',
+            'comment',
+            'grab'
+        );
+    }
     if (this.block) {
         this.block.comment = null;
         this.block = null;
@@ -14688,6 +15026,17 @@ CommentMorph.prototype.prepareToBeGrabbed = function (hand) {
     if (this.anchor) {
         this.anchor.destroy();
         this.anchor = null;
+    }
+};
+
+CommentMorph.prototype.justDropped = function (hand) {
+    var scripts = this.parentThatIsA(ScriptsMorph);
+    if (scripts) {
+        scripts.scriptTarget().recordUserEdit(
+            'scripts',
+            'comment',
+            'drop'
+        );
     }
 };
 
@@ -14711,6 +15060,12 @@ CommentMorph.prototype.snap = function (hand) {
             this.snapSound.play();
         }
         scripts.lastDropTarget = {element: target};
+        scripts.scriptTarget().recordUserEdit(
+            'scripts',
+            'comment',
+            'snap',
+            this.block.abstractBlockSpec()
+        );
     }
     this.align();
     scripts.lastDroppedBlock = this;

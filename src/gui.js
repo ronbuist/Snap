@@ -86,7 +86,7 @@ BlockVisibilityDialogMorph, ThreadManager, isString*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.gui = '2022-November-25';
+modules.gui = '2022-December-13';
 
 // Declarations
 
@@ -228,13 +228,38 @@ function IDE_Morph(config = { autofill: true }) {
     this.init(config);
 }
 
+/*
+    Configuring the IDE for specialized uses, e.g. as DSL inside another IDE
+    can be achieved by passing in an optional configuration dictionary when
+    creating an instance. This is still very much under construction. Currently
+    the following options are available:
+
+        path            str, path to additional resources (translations)
+        load:           str, microworld file name (xml)
+        design:         str, currently "flat" (bright) or "classic" (dark)
+        border:         num, pixels surrounding the IDE, default is none (zero)
+        lang:           str, translation to be used, e.g. "de" for German
+        mode:           str, currently "presentation" or "edit"
+        hideControls:   bool, hide/show the tool bar
+        hideCategories: bool, hide/show the palette block category buttons
+        noSprites:      bool, hide/show the stage, corral, sprite editor
+        noPalette:      bool, hide/show the palette including the categories
+        noImports:      bool, disable/allow importing files via drag&drop
+        noOwnBlocks:    bool, hider/show "make a block" and "make a category"
+        noRingify:      bool, disable/enable "ringify"/"unringify" in ctx menu
+        noUserSettings: bool, disable/enable persistent user preferences
+        blocksZoom:     num, zoom factor for blocks, e.g. 1.5
+        blocksFade:     num, fading percentage for blocks, e.g. 85
+        zebra:          num, contrast percentage for nesting same-color blocks
+
+    Note that such configurations will not affect the user's own preference
+    settings, e.g. configuring the blocks zoom or language will not overwrite
+    the user's own settings which are kept in localstorage.
+*/
+
 IDE_Morph.prototype.init = function (config) {
     // global font setting
     MorphicPreferences.globalFontFamily = 'Helvetica, Arial';
-
-    // restore saved user preferences
-    this.userLanguage = null; // user language preference for startup
-    this.applySavedSettings();
 
     // additional properties:
     this.cloud = new Cloud();
@@ -243,6 +268,10 @@ IDE_Morph.prototype.init = function (config) {
     this.serializer = new SnapSerializer();
     this.config = config;
     this.version = Date.now(); // for outside observers
+
+    // restore saved user preferences
+    this.userLanguage = null; // user language preference for startup
+    this.applySavedSettings();
 
     // scenes
     this.scenes = new List([new Scene()]);
@@ -697,6 +726,8 @@ IDE_Morph.prototype.openIn = function (world) {
 
     // configure optional settings
     this.applyConfigurations();
+
+    return this;
 };
 
 // IDE_Morph configuration
@@ -757,6 +788,18 @@ IDE_Morph.prototype.applyConfigurations = function () {
         SpriteMorph.prototype.initBlocks();
     }
 
+    // blocks fade
+    if (cnf.blocksFade) {
+        SyntaxElementMorph.prototype.setAlphaScaled(100 - cnf.blocksFade);
+    }
+
+    // zebra coloring //
+    if (isNil(cnf.zebra)) {
+        BlockMorph.prototype.zebraContrast = 40;
+    } else {
+        BlockMorph.prototype.zebraContrast = cnf.zebra;
+    }
+
     // language
     if (cnf.lang) {
         lang = cnf.lang;
@@ -778,6 +821,11 @@ IDE_Morph.prototype.applyConfigurations = function () {
             document.head.appendChild(translation);
             translation.src = src;
         }
+    }
+
+    // no palette
+    if (cnf.noPalette) {
+        ScriptsMorph.prototype.enableKeyboard = false;
     }
 
     if (!refreshLater) {
@@ -812,6 +860,13 @@ IDE_Morph.prototype.applyPaneHidingConfigurations = function () {
         this.corral.hide();
         this.spriteBar.hide();
         this.stageHandle.hide();
+    }
+
+    // no palette
+    if (cnf.noPalette) {
+        this.categories.hide();
+        this.palette.hide();
+        this.paletteHandle.hide();
     }
 };
 
@@ -1712,8 +1767,21 @@ IDE_Morph.prototype.createPalette = function (forSearching) {
                 hand.grabOrigin.origin.recordDrop(hand.grabOrigin);
             }
             droppedMorph.perish(myself.isAnimating ? 200 : 0);
+            this.currentSprite.recordUserEdit(
+                'scripts',
+                'block',
+                'delete',
+                droppedMorph.abstractBlockSpec()
+            );
         } else {
             droppedMorph.perish(myself.isAnimating ? 200 : 0);
+            if (droppedMorph instanceof CommentMorph) {
+                this.currentSprite.recordUserEdit(
+                    'scripts',
+                    'comment',
+                    'delete'
+                );
+            }
         }
     };
 
@@ -1795,7 +1863,11 @@ IDE_Morph.prototype.createSpriteBar = function () {
                     myself.currentSprite.changed();
                     myself.currentSprite.fixLayout();
                     myself.currentSprite.rerender();
-                    myself.recordUnsavedChanges();
+                    myself.currentSprite.recordUserEdit(
+                        'sprite',
+                        'rotation',
+                        rotationStyle
+                    );
                 }
                 rotationStyleButtons.forEach(each =>
                     each.refresh()
@@ -1868,7 +1940,6 @@ IDE_Morph.prototype.createSpriteBar = function () {
             myself.newSpriteName(newName, myself.currentSprite)
         );
         nameField.setContents(myself.currentSprite.name);
-        myself.recordUnsavedChanges();
     };
     this.spriteBar.reactToEdit = nameField.accept;
 
@@ -1878,7 +1949,11 @@ IDE_Morph.prototype.createSpriteBar = function () {
         null,
         () => {
             this.currentSprite.isDraggable = !this.currentSprite.isDraggable;
-            this.recordUnsavedChanges();
+            this.currentSprite.recordUserEdit(
+                'sprite',
+                'draggable',
+                this.currentSprite.isDraggable
+            );
         },
         localize('draggable'),
         () => this.currentSprite.isDraggable
@@ -2332,7 +2407,11 @@ IDE_Morph.prototype.createCorral = function (keepSceneAlbum) {
     this.corral.addSprite = function (sprite) {
         this.frame.contents.add(new SpriteIconMorph(sprite));
         this.fixLayout();
-        myself.recordUnsavedChanges();
+        sprite.recordUserEdit(
+            'corral',
+            'add',
+            sprite.name
+        );
     };
 
     this.corral.refresh = function () {
@@ -2465,7 +2544,10 @@ IDE_Morph.prototype.fixLayout = function (situation) {
         }
 
         // spriteBar
-        this.spriteBar.setLeft(this.paletteWidth + padding + border);
+        this.spriteBar.setLeft(cnf.noPalette ?
+            this.left() + border
+            : this.paletteWidth + padding + border
+        );
         this.spriteBar.setTop(
             cnf.hideControls ?
                 this.top() + border
@@ -2653,6 +2735,8 @@ IDE_Morph.prototype.endBulkDrop = function () {
 };
 
 IDE_Morph.prototype.droppedImage = function (aCanvas, name, embeddedData, src) {
+    if (this.config.noImports) {return; }
+
     var costume = new Costume(
         aCanvas,
         this.currentSprite.newCostumeName(
@@ -2692,10 +2776,16 @@ IDE_Morph.prototype.droppedImage = function (aCanvas, name, embeddedData, src) {
     this.currentSprite.wearCostume(costume);
     this.spriteBar.tabBar.tabTo('costumes');
     this.hasChangedMedia = true;
-    this.recordUnsavedChanges();
+    this.currentSprite.recordUserEdit(
+        'costume',
+        'imported',
+        costume.name
+    );
 };
 
 IDE_Morph.prototype.droppedSVG = function (anImage, name) {
+    if (this.config.noImports) {return; }
+
     var myself,
         viewBox,
         w = 300, h = 150, // setting HTMLImageElement default values
@@ -2774,6 +2864,8 @@ IDE_Morph.prototype.loadSVG = function (anImage, name) {
 };
 
 IDE_Morph.prototype.droppedAudio = function (anAudio, name) {
+    if (this.config.noImports) {return; }
+
     if (anAudio.src.indexOf('data:audio') !== 0) {
     	// fetch and base 64 encode samples using FileReader
     	this.getURL(
@@ -2795,11 +2887,17 @@ IDE_Morph.prototype.droppedAudio = function (anAudio, name) {
     	this.currentSprite.addSound(anAudio, name.split('.')[0]); // up to '.'
     	this.spriteBar.tabBar.tabTo('sounds');
     	this.hasChangedMedia = true;
-        this.recordUnsavedChanges();
+        this.currentSprite.recordUserEdit(
+            'sound',
+            'imported',
+            name
+        );
     }
 };
 
 IDE_Morph.prototype.droppedText = function (aString, name, fileType) {
+    if (this.config.noImports) {return; }
+
     var lbl = name ? name.split('.')[0] : '',
         ext = name ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '',
         setting = this.isAddingScenes;
@@ -2865,6 +2963,8 @@ IDE_Morph.prototype.droppedText = function (aString, name, fileType) {
 };
 
 IDE_Morph.prototype.droppedBinary = function (anArrayBuffer, name) {
+    if (this.config.noImports) {return; }
+
     // dynamically load ypr->Snap!
     var ypr = document.getElementById('ypr'),
         myself = this,
@@ -3135,6 +3235,8 @@ IDE_Morph.prototype.refreshIDE = function () {
 // IDE_Morph settings persistance
 
 IDE_Morph.prototype.applySavedSettings = function () {
+    if (this.config.noUserSettings) {return; }
+
     var design = this.getSetting('design'),
         zoom = this.getSetting('zoom'),
         fade = this.getSetting('fade'),
@@ -3225,7 +3327,7 @@ IDE_Morph.prototype.applySavedSettings = function () {
 };
 
 IDE_Morph.prototype.saveSetting = function (key, value) {
-    if (!this.savingPreferences) {
+    if (!this.savingPreferences || this.config.noUserSettings) {
         return;
     }
     if (this.hasLocalStorage()) {
@@ -3264,17 +3366,17 @@ IDE_Morph.prototype.hasUnsavedEdits = function () {
     return this.scenes.itemsArray().some(any => any.hasUnsavedEdits);
 };
 
-IDE_Morph.prototype.recordUnsavedChanges = function () {
+IDE_Morph.prototype.recordUnsavedChanges = function (spriteName, details) {
     this.scene.hasUnsavedEdits = true;
-    this.updateChanges();
+    this.updateChanges(spriteName, details);
 };
 
 IDE_Morph.prototype.recordSavedChanges = function () {
     this.scenes.itemsArray().forEach(scene => scene.hasUnsavedEdits = false);
-    this.updateChanges();
+    this.updateChanges(this.currentSprite.name, ['project', 'save']);
 };
 
-IDE_Morph.prototype.updateChanges = function () {
+IDE_Morph.prototype.updateChanges = function (spriteName, details) {
     // private
     // invalidate saved backup, if any - but don't actually delete it yet
     if (this.hasLocalStorage() &&
@@ -3287,6 +3389,13 @@ IDE_Morph.prototype.updateChanges = function () {
 
     // indicate unsaved changes in the project title display
     this.controlBar.updateLabel();
+
+    // trigger an event
+    this.stage.fireUserEditEvent(
+        spriteName || this.currentSprite.name,
+        details || [],
+        this.version
+    );
 };
 
 // IDE_Morph project backup
@@ -3429,7 +3538,6 @@ IDE_Morph.prototype.paintNewSprite = function () {
         () => {
             sprite.addCostume(cos);
             sprite.wearCostume(cos);
-            this.recordUnsavedChanges();
         }
     );
 };
@@ -3449,7 +3557,7 @@ IDE_Morph.prototype.newCamSprite = function () {
         this,
         sprite,
         () => this.removeSprite(sprite),
-        function (costume) { // needs to be "function" to it can access "this"
+        function (costume) { // needs to be "function" so it can access "this"
             sprite.addCostume(costume);
             sprite.wearCostume(costume);
             this.close();
@@ -3472,7 +3580,6 @@ IDE_Morph.prototype.recordNewSound = function () {
                 this.makeSureRecordingIsMono(sound);
                 this.spriteBar.tabBar.tabTo('sounds');
                 this.hasChangedMedia = true;
-                this.recordUnsavedChanges();
             }
         });
 
@@ -3644,7 +3751,11 @@ IDE_Morph.prototype.duplicateSprite = function (sprite) {
     duplicate.keepWithin(this.stage);
     duplicate.isDown = sprite.isDown;
     this.selectSprite(duplicate);
-    this.recordUnsavedChanges();
+    duplicate.recordUserEdit(
+        'corral',
+        'duplicate',
+        sprite.name
+    );
 };
 
 IDE_Morph.prototype.instantiateSprite = function (sprite) {
@@ -3660,7 +3771,11 @@ IDE_Morph.prototype.instantiateSprite = function (sprite) {
     }
     instance.isDown = sprite.isDown;
     this.selectSprite(instance);
-    this.recordUnsavedChanges();
+    instance.recordUserEdit(
+        'corral',
+        'clone',
+        sprite.name
+    );
 };
 
 IDE_Morph.prototype.removeSprite = function (sprite) {
@@ -3670,6 +3785,11 @@ IDE_Morph.prototype.removeSprite = function (sprite) {
     );
     idx = this.sprites.asArray().indexOf(sprite) + 1;
     this.stage.threads.stopAllForReceiver(sprite);
+    sprite.recordUserEdit(
+        'corral',
+        'delete',
+        sprite.name
+    );
     sprite.corpsify();
     sprite.destroy();
     this.stage.watchers().forEach(watcher => {
@@ -3688,7 +3808,6 @@ IDE_Morph.prototype.removeSprite = function (sprite) {
     ) || this.stage;
 
     this.selectSprite(this.currentSprite);
-    this.recordUnsavedChanges();
 
     // remember the deleted sprite so it can be recovered again later
     this.scene.trash.push(sprite);
@@ -6060,6 +6179,7 @@ IDE_Morph.prototype.rawOpenScriptString = function (str) {
     } else {
         script = this.deserializeScriptString(str);
     }
+    script.fixBlockColor(null, true);
     this.spriteBar.tabBar.tabTo('scripts');
     script.pickUp(world);
     world.hand.grabOrigin = {
@@ -6191,7 +6311,8 @@ IDE_Morph.prototype.switchToScene = function (
     data,
     pauseHats
 ) {
-    var appMode = this.isAppMode;
+    var appMode = this.isAppMode,
+        listeners;
     if (!scene || !scene.stage) {
         return;
     }
@@ -6201,9 +6322,11 @@ IDE_Morph.prototype.switchToScene = function (
     this.scene.captureGlobalSettings();
     this.scene = scene;
     this.globalVariables = scene.globalVariables;
+    listeners = this.stage.messageCallbacks;
     this.stage.destroy();
     this.add(scene.stage);
     this.stage = scene.stage;
+    this.stage.messageCallbacks = listeners;
     this.sprites = scene.sprites;
     if (pauseHats) {
         this.stage.pauseGenericHatBlocks();
@@ -9905,11 +10028,12 @@ SpriteIconMorph.prototype.chooseExemplar = function () {
 };
 
 SpriteIconMorph.prototype.releaseSprite = function () {
-    var ide = this.parentThatIsA(IDE_Morph);
     this.object.release();
-    if (ide) {
-        ide.recordUnsavedChanges();
-    }
+    this.object.recordUserEdit(
+        'sprite',
+        'release',
+        this.object.name
+    );
 };
 
 SpriteIconMorph.prototype.showSpriteOnStage = function () {
@@ -10262,7 +10386,11 @@ CostumeIconMorph.prototype.editRotationPointOnly = function () {
     var ide = this.parentThatIsA(IDE_Morph);
     this.object.editRotationPointOnly(this.world(), ide);
     ide.hasChangedMedia = true;
-    ide.recordUnsavedChanges();
+    ide.currentSprite.recordUserEdit(
+        'costume',
+        'rotation point',
+        this.object.name
+    );
 };
 
 CostumeIconMorph.prototype.renameCostume = function () {
@@ -10273,6 +10401,7 @@ CostumeIconMorph.prototype.renameCostume = function () {
     new DialogBoxMorph(
         null,
         answer => {
+            var old = costume.name;
             if (answer && (answer !== costume.name)) {
                 costume.name = wardrobe.sprite.newCostumeName(
                     answer,
@@ -10280,11 +10409,16 @@ CostumeIconMorph.prototype.renameCostume = function () {
                 );
                 costume.version = Date.now();
                 ide.hasChangedMedia = true;
-                ide.recordUnsavedChanges();
+                wardrobe.sprite.recordUserEdit(
+                    'costume',
+                    'rename',
+                    old,
+                    costume.name
+                );
             }
         }
     ).prompt(
-        ide.currentSprite instanceof SpriteMorph ?
+        wardrobe.sprite instanceof SpriteMorph ?
             'rename costume' : 'rename background',
         costume.name,
         this.world()
@@ -10306,12 +10440,17 @@ CostumeIconMorph.prototype.duplicateCostume = function () {
 CostumeIconMorph.prototype.removeCostume = function () {
     var wardrobe = this.parentThatIsA(WardrobeMorph),
         idx = this.parent.children.indexOf(this),
-        off = CamSnapshotDialogMorph.prototype.enableCamera ? 3 : 2,
-        ide = this.parentThatIsA(IDE_Morph);
+        off = CamSnapshotDialogMorph.prototype.enableCamera ? 3 : 2;
     wardrobe.removeCostumeAt(idx - off); // ignore paintbrush and camera buttons
-    if (ide.currentSprite.costume === this.object) {
-        ide.currentSprite.wearCostume(null);
+    if (wardrobe.sprite.costume === this.object) {
+        wardrobe.sprite.wearCostume(null);
     }
+    wardrobe.sprite.recordUserEdit(
+        'costume',
+        'delete',
+        idx - off,
+        this.object.name
+    );
 };
 
 CostumeIconMorph.prototype.importEmbeddedData = function () {
@@ -10754,10 +10893,12 @@ WardrobeMorph.prototype.paintNew = function () {
             this.sprite.shadowAttribute('costumes');
             this.sprite.addCostume(cos);
             this.updateList();
-            if (ide) {
-                ide.currentSprite.wearCostume(cos);
-                ide.recordUnsavedChanges();
-            }
+            this.sprite.wearCostume(cos);
+            this.sprite.recordUserEdit(
+                'costume',
+                'draw',
+                cos.name
+            );
         }
     );
 };
@@ -10775,7 +10916,11 @@ WardrobeMorph.prototype.newFromCam = function () {
             sprite.addCostume(costume);
             sprite.wearCostume(costume);
             this.updateList();
-            ide.recordUnsavedChanges();
+            sprite.recordUserEdit(
+                'costume',
+                'snap',
+                costume.name
+            );
         });
 
     camDialog.key = 'camera';
@@ -10802,6 +10947,12 @@ WardrobeMorph.prototype.reactToDropOf = function (icon) {
     this.sprite.costumes.add(costume, idx + 1);
     this.updateList();
     icon.mouseClickLeft(); // select
+    this.sprite.recordUserEdit(
+        'costume',
+        'add',
+        costume.name,
+        idx + 1
+    );
 };
 
 // SoundIconMorph ///////////////////////////////////////////////////////
@@ -10974,13 +11125,20 @@ SoundIconMorph.prototype.renameSound = function () {
     new DialogBoxMorph(
         null,
         answer => {
-            if (answer && (answer !== sound.name)) {
+            var old = sound.name;
+            if (answer && (answer !== old)) {
                 sound.name = answer;
                 sound.version = Date.now();
                 this.createLabel(); // can be omitted once I'm stepping
                 this.fixLayout(); // can be omitted once I'm stepping
                 ide.hasChangedMedia = true;
-                ide.recordUnsavedChanges();
+                ide.currentSprite.recordUserEdit(
+                    'sound',
+                    'rename',
+                    old,
+                    sound.name
+                );
+
             }
         }
     ).prompt(
@@ -10994,6 +11152,12 @@ SoundIconMorph.prototype.removeSound = function () {
     var jukebox = this.parentThatIsA(JukeboxMorph),
         idx = this.parent.children.indexOf(this) - 1;
     jukebox.removeSound(idx);
+    jukebox.sprite.recordUserEdit(
+        'sound',
+        'delete',
+        idx,
+        this.object.name
+    );
 };
 
 SoundIconMorph.prototype.exportSound = function () {
@@ -11157,7 +11321,7 @@ JukeboxMorph.prototype.wantsDropOf = function (morph) {
 
 JukeboxMorph.prototype.reactToDropOf = function (icon) {
     var idx = 0,
-        costume = icon.object,
+        sound = icon.object,
         top = icon.top();
 
     icon.destroy();
@@ -11168,8 +11332,15 @@ JukeboxMorph.prototype.reactToDropOf = function (icon) {
     });
 
     this.sprite.shadowAttribute('sounds');
-    this.sprite.sounds.add(costume, idx + 1);
+    this.sprite.sounds.add(sound, idx + 1);
     this.updateList();
+
+    this.sprite.recordUserEdit(
+        'sound',
+        'add',
+        sound.name,
+        idx + 1
+    );
 };
 
 // SceneIconMorph ////////////////////////////////////////////////////
