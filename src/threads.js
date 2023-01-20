@@ -9,7 +9,7 @@
     written by Jens Mönig
     jens@moenig.org
 
-    Copyright (C) 2022 by Jens Mönig
+    Copyright (C) 2023 by Jens Mönig
 
     This file is part of Snap!.
 
@@ -65,7 +65,7 @@ StagePickerMorph, CustomBlockDefinition*/
 
 /*jshint esversion: 11, bitwise: false, evil: true*/
 
-modules.threads = '2022-December-11';
+modules.threads = '2023-January-09';
 
 var ThreadManager;
 var Process;
@@ -3034,7 +3034,13 @@ Process.prototype.reportCombine = function (list, reporter) {
 
             // test for base cases
             if (list.length() < 2) {
-                this.returnValueToParentContext(list.length() ? list.at(1) : 0);
+                this.returnValueToParentContext(
+                    list.length() ?
+                        list.at(1)
+                        : (reporter.expression.selector === 'reportJoinWords' ?
+                            ''
+                            : 0)
+                );
                 return;
             }
 
@@ -3069,7 +3075,13 @@ Process.prototype.reportCombine = function (list, reporter) {
 
             // test for base cases
             if (list.length() < 2) {
-                this.returnValueToParentContext(list.length() ? list.at(1) : 0);
+                this.returnValueToParentContext(
+                    list.length() ?
+                        list.at(1)
+                        : (reporter.expression.selector === 'reportJoinWords' ?
+                            ''
+                            : 0)
+                );
                 return;
             }
 
@@ -3294,6 +3306,9 @@ Process.prototype.doPlaySoundUntilDone = function (name) {
     }
     if (name === null || this.context.activeAudio.ended
             || this.context.activeAudio.terminated) {
+        if (this.context.activeAudio) {
+            this.context.activeAudio.remove();
+        }
         return null;
     }
     this.pushContext('doYield');
@@ -3307,6 +3322,7 @@ Process.prototype.doStopAllSounds = function () {
             if (thread.context) {
                 thread.context.stopMusic();
                 if (thread.context.activeAudio) {
+                    thread.context.activeAudio.remove();
                     thread.popContext();
                 }
             }
@@ -6811,7 +6827,7 @@ Process.prototype.reportBlockAttribute = function (attribute, block) {
 
 Process.prototype.reportBasicBlockAttribute = function (attribute, block) {
     var choice = this.inputOption(attribute),
-        expr, body, slots, def, info;
+        expr, body, slots, def, info, loc;
     this.assertType(block, ['command', 'reporter', 'predicate']);
     expr = block.expression;
     switch (choice) {
@@ -6923,6 +6939,18 @@ Process.prototype.reportBasicBlockAttribute = function (attribute, block) {
             });
         }
         return slots;
+    case 'translations':
+        if (expr.isCustomBlock) {
+            def = (expr.isGlobal ?
+                expr.definition
+                : this.blockReceiver().getMethod(expr.semanticSpec));
+            loc = new List();
+            Object.keys(def.translations).forEach(lang =>
+                loc.add(new List([lang, def.translations[lang]]))
+            );
+            return loc;
+        }
+        return '';
     }
     return '';
 };
@@ -7069,7 +7097,7 @@ Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
         ide = rcvr.parentThatIsA(IDE_Morph),
         types = ['command', 'reporter', 'predicate'],
         scopes = ['global', 'local'],
-        idx, oldSpec, expr, def, inData, template, oldType, type;
+        idx, oldSpec, expr, def, inData, template, oldType, type, loc;
 
     this.assertType(block, types);
     expr = block.expression;
@@ -7247,6 +7275,14 @@ Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
                 def.declarations.set(name, info);
             }
         });
+        break;
+    case 'translations':
+        this.assertType(val, 'list');
+        loc = {};
+        val.map(row =>
+            loc[row.at(1).toString()] = row.at(2).toString()
+        );
+        def.translations = loc;
         break;
     default:
         return;

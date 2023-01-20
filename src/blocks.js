@@ -9,7 +9,7 @@
     written by Jens Mönig
     jens@moenig.org
 
-    Copyright (C) 2022 by Jens Mönig
+    Copyright (C) 2023 by Jens Mönig
 
     This file is part of Snap!.
 
@@ -161,7 +161,7 @@ SVG_Costume, embedMetadataPNG, ThreadManager*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2022-December-13';
+modules.blocks = '2023-January-18';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -818,7 +818,8 @@ SyntaxElementMorph.prototype.labelParts = {
             '~' : null,
             'defaults': ['defaults'],
             'menus' : ['menus'],
-            'editables' : ['editables']
+            'editables' : ['editables'],
+            'translations' : ['translations']
         }
     },
     '%byob': {
@@ -834,7 +835,8 @@ SyntaxElementMorph.prototype.labelParts = {
             '~' : null,
             'defaults': ['defaults'],
             'menus' : ['menus'],
-            'editables' : ['editables']
+            'editables' : ['editables'],
+            'translations' : ['translations']
         }
     },
 
@@ -5777,16 +5779,18 @@ BlockMorph.prototype.unwindAfter = function (element) {
     return this.inputs()[idx + 1].unwind();
 };
 
-BlockMorph.prototype.rewind = function () {
+BlockMorph.prototype.rewind = function (scriptOnly = false) {
     // return an array of blocks and inputs roughly mimicking the visible
     // sequence of operations leading up to this block. Used to trace
     // variable accessors back to their nearest variable declaration within
     // lexical scope.
+    // scriptOnly is optional, if set to <true> scanning stops at the script's
+    // top block, excluding sprite-local and global variable declarations
 
-    var ide = this.scriptTarget().parentThatIsA(IDE_Morph),
-        current = this,
+    var current = this,
         trace = [],
-        declarations;
+        declarations,
+        ide;
 
     function log(block) {
         if (trace.includes(block)) {return; }
@@ -5837,11 +5841,14 @@ BlockMorph.prototype.rewind = function () {
         current = current.parent?.parentThatIsA(BlockMorph);
     }
 
-    if (ide) {
-        declarations = ide.palette.contents.children.filter(morph =>
-            morph instanceof BlockMorph && morph.selector === 'reportGetVar'
-        ).reverse();
-        declarations.forEach(block => trace.push(block));
+    if (!scriptOnly) {
+        ide = this.scriptTarget().parentThatIsA(IDE_Morph);
+        if (ide) {
+            declarations = ide.palette.contents.children.filter(morph =>
+                morph instanceof BlockMorph && morph.selector === 'reportGetVar'
+            ).reverse();
+            declarations.forEach(block => trace.push(block));
+        }
     }
 
     return trace;
@@ -8402,29 +8409,20 @@ ScriptsMorph.prototype.exportScriptsPicture = function () {
         ide = this.world().children[0],
         xml = this.scriptsXML();
 
-    function fallback() {
-        ide.saveCanvasAs(
-            pic,
-            (ide.getProjectName() || localize('untitled')) + ' ' +
-                localize('script pic')
-        );
-    }
-
     if (pic) {
         if (xml) {
-            try {
-                ide.saveFileAs(
-                    embedMetadataPNG(pic, xml),
-                    'image/png',
-                    (ide.getProjectName() || localize('untitled')) + ' ' +
-                        localize('script pic')
-                );
-            } catch (err) {
-                console.log(err);
-                fallback();
-            }
+            ide.saveFileAs(
+                embedMetadataPNG(pic, xml),
+                'image/png',
+                (ide.getProjectName() || localize('untitled')) + ' ' +
+                    localize('script pic')
+            );
         } else {
-            fallback();
+            ide.saveCanvasAs(
+                pic,
+                (ide.getProjectName() || localize('untitled')) + ' ' +
+                    localize('script pic')
+            );
         }
     }
 };
