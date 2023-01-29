@@ -2,10 +2,12 @@
 
 ## in development:
 * **New Features:**
+    * include custom block data dependencies in libraries, eliminates the need for initialization routines creating and populating variables required by custom block definitions
     * visually highlight variable scope when mouse-hovering over a variable declaration in visible stepping mode
     * visually highlight the variable declaration of variable accessor blocks when mouse-hovering over them in visible stepping mode
     * visually highlight senders / receivers when mouse-hovering over messaging blocks in visible stepping mode
     * new "When (sprite) is edited" event hat block, supports light user interaction logging
+    * show intermediate results when debugging a script, i.e. when clicking on a script in visible stepping mode. Thanks, Vic!
     * new PIPE primitive in the control category
     * "touching" predicate now  also accepts a 2-item list representing x/y-coordinates to check for collision with an arbitrary point 
     * hyper-rays: support lists of relative angles in the left "ray length TO sprite" input slot for instant fields of vision
@@ -19,6 +21,7 @@
     * new extension primitive "cst_export(cst, name)" for exporting/downloading a costume
     * new extension primitive: "syn_scripts([xml])" for getting & setting (and deleting!) the scripts of a sprite
     * codification: calling "code of" on a sprite returns a text version of its scripting area (concatenated codified scripts delimited by empty lines)
+    * extensions can auto-load and auto-exec allowed or allow-listed external JS scripts that modify the IDE, e.g. to add buttons by storing the external url in global (optionally hidden) variables whose name starts with "__module__"  
     * extensions can add custom buttons to the palette, thanks, Bernat!
     * added retina support for inlined morphic worlds, enabling high-res embedding of Snap! components into other websites
     * added configuration options for embedding Snap! into other websites
@@ -43,8 +46,10 @@
     * don't show "result pic" option in block context menu with "click-to-run" disabled
     * enable JavaScript extensions when running Snap! locally without a webserver (location.protocoll "file:")
     * enable "JavaScript function" primitive to be hidden / shown independently from enabling JavaScript extensions
+    * shrunk some new built-in costumes, to make them load faster
 * **Notable Fixes:**
     * fixed refactoring (renaming) variables (I hope, haha!)
+    * fixed retaining transience when renaming a global or sprite-local variable
     * fixed displaying message senders
     * improved text wrapping - wrap words that are too wide for a line by letters
     * improved touch-hold gesture on mobile Android devices, thanks, @ego-lay-atman-bay!
@@ -83,6 +88,46 @@
     * German
     * Catalan, thanks, Joan!
     * Dutch, thanks, Hans!
+    * Brazilian Portuguese, thanks, Artur!
+
+### 2023-10-29
+* shrunk some new built-in costumes, to make them load faster
+
+### 2023-10-27
+* threads: show intermediate results when debugging a script, i.e. when clicking on a script in visible stepping mode. Thanks, Vic!
+* threads: tweaked above to correctly display lists and tables, and also handle custom reporters
+
+### 2023-10-26
+* locale: added Artur to the translators credits
+* blocks: enabled scope-highlighting for touch devices, experimental
+
+### 2023-10-25
+* gui: experimental autoLoadExtensions() mechanism
+* Brazilian Portuguese translation update, thanks, Artur!
+* updated version history
+
+### 2023-10-23
+* gui, store: read back data dependencies included in exported libraries
+* byob, gui: distinguish between global and sprite-local data dependencies
+* gui, store: read back local data dependencies included in exported libraries
+* blocks, gui: include custom block data dependencies in exported single scripts
+* blocks: only include data dependencies in exported block definitions
+* objects, gui: include global custom block data dependencies in exported sprites
+* objects: fixed #3150 - renaming a transient variable removes its transience
+
+### 2023-10-22
+* byob, gui, threads: new file structure for libraries to include global data dependencies
+
+### 2023-10-21
+* threads: fixed fork()
+* byob: init data dependencies for block export dialog
+* byob: added data dependencies UI to block export dialog
+
+### 2023-10-20
+* lists: refactored some helper functions
+* threads: added VariableFrame >> branch()
+* threads: added VariableFrame >> merge()
+* threads: renamed branch() to fork()
 
 ### 2023-10-19
 * gui, extensions: added user edit event for language change

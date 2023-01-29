@@ -65,7 +65,7 @@ StagePickerMorph, CustomBlockDefinition*/
 
 /*jshint esversion: 11, bitwise: false, evil: true*/
 
-modules.threads = '2023-January-09';
+modules.threads = '2023-January-27';
 
 var ThreadManager;
 var Process;
@@ -1110,9 +1110,9 @@ Process.prototype.evaluateNextInput = function (element) {
 
 Process.prototype.evaluateNextInputSet = function (element) {
     // Optimization to use instead of evaluateNextInput(), bums out a few
-    // frames and function calls to save a some milliseconds.
+    // frames and function calls to save some milliseconds.
     // the idea behind this optimization is to keep evaluating the inputs
-    // while we know for sure that we aren't boing to yield anyway
+    // while we know for sure that we aren't going to yield anyway
     var args = element.inputs(),
         sel = this.context.expression.selector,
         outer = this.context.outerContext, // for tail call elimination
@@ -6734,6 +6734,35 @@ Process.prototype.returnValueToParentContext = function (value) {
                 this.context.parentContext || this.homeContext
             : this.homeContext;
         target.addInput(value);
+
+        // if the script has been clicked on by the user in visible stepping
+        // mode show the result of evaluating a reporter in a
+        // speech balloon. Thanks, Vic!
+        if (this.enableSingleStepping &&
+            this.isClicked &&
+            this.context.expression instanceof ReporterBlockMorph
+        ) {
+            let anchor = this.context.expression;
+            if (!anchor.world()) {
+                // find a place to display the result of custon reporters
+                anchor = this.topBlock;
+            }
+            if (value instanceof List) {
+                anchor.showBubble(
+                    value.isTable() ?
+                        new TableFrameMorph(new TableMorph(value, 10))
+                        : new ListWatcherMorph(value),
+                    this.exportResult,
+                    this.receiver
+                );
+            } else {
+                anchor.showBubble(
+                    value,
+                    this.exportResult,
+                    this.receiver
+                );
+            }
+        }
     }
 };
 
@@ -8212,6 +8241,48 @@ VariableFrame.prototype.fullCopy = function () {
     frame.vars = copy(this.vars);
     return frame;
 };
+
+// Variable Frame forking and merging for libraries
+
+VariableFrame.prototype.fork = function (names = []) {
+    // answer a copy that only has entries for the given array of variable names
+    // and only has values for primitive data.
+    // used for including data dependencies in libraries.
+    var frame = new VariableFrame();
+    this.names(true).forEach(vName => {
+        var v, val, typ;
+        if (names.includes(vName)) {
+            v = this.vars[vName];
+            if (v.isTransient) {
+                val = '';
+            } else {
+                typ = Process.prototype.reportTypeOf(v.value);
+                if (['text', 'number', 'Boolean'].includes(typ) ||
+                    (v.value instanceof List &&
+                        (v.value.canBeCSV() || v.value.canBeJSON()))
+                ) {
+                    val = v.value;
+                } else {
+                    val = '';
+                }
+            }
+            frame.vars[vName] = new Variable(val, v.isTransient, v.isHidden);
+        }
+    });
+    return frame;
+};
+
+VariableFrame.prototype.merge = function (otherFrame) {
+    // add another frame's variables overwriting existing values and
+    // settings (transient, hidden) if any. Merge only replaces and
+    // adds to the frame, does not delete any entries.
+    // used for handling data dependencies in libraries.
+    otherFrame.names(true).forEach(vName =>
+        this.vars[vName] = otherFrame.vars[vName]
+    );
+};
+
+// Variable Frame ops
 
 VariableFrame.prototype.root = function () {
     if (this.parentFrame) {

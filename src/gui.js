@@ -80,13 +80,13 @@ BlockLabelPlaceHolderMorph, SpeechBubbleMorph, XML_Element, WatcherMorph, WHITE,
 BlockRemovalDialogMorph,TableMorph, isSnapObject, isRetinaEnabled, SliderMorph,
 disableRetinaSupport, enableRetinaSupport, isRetinaSupported, MediaRecorder,
 Animation, BoxMorph, BlockDialogMorph, RingMorph, Project, ZERO, BLACK,
-BlockVisibilityDialogMorph, ThreadManager, isString*/
+BlockVisibilityDialogMorph, ThreadManager, isString, SnapExtensions*/
 
 /*jshint esversion: 6*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.gui = '2022-January-19';
+modules.gui = '2022-January-25';
 
 // Declarations
 
@@ -5995,6 +5995,7 @@ IDE_Morph.prototype.rawOpenProjectString = function (str) {
             this.serializer.load(str, this)
         );
     }
+    this.autoLoadExtensions();
     this.stopFastTracking();
 };
 
@@ -6042,6 +6043,7 @@ IDE_Morph.prototype.rawOpenCloudDataString = function (str) {
             )
         );
     }
+    this.autoLoadExtensions();
     this.stopFastTracking();
     this.isAddingScenes = setting;
     this.isAddingNextScene = false;
@@ -6083,6 +6085,14 @@ IDE_Morph.prototype.rawOpenBlocksString = function (str, name, silently) {
             this.currentSprite.customBlocks.push(def);
             this.currentSprite.replaceDoubleDefinitionsFor(def);
         });
+        if (blocks.data) {
+            this.globalVariables.merge(blocks.data);
+            this.flushBlocksCache('variables');
+        }
+        if (blocks.localData) {
+            this.currentSprite.variables.merge(blocks.localData);
+            this.flushBlocksCache('variables');
+        }
         this.flushPaletteCache();
         this.refreshPalette();
         this.showMessage(
@@ -6101,6 +6111,7 @@ IDE_Morph.prototype.rawOpenBlocksString = function (str, name, silently) {
     this.createPaletteHandle();
     this.categories.fixLayout();
     this.fixLayout();
+    this.autoLoadExtensions();
 };
 
 IDE_Morph.prototype.openSpritesString = function (str) {
@@ -6126,6 +6137,7 @@ IDE_Morph.prototype.rawOpenSpritesString = function (str) {
     } else {
         this.deserializeSpritesString(str);
     }
+    this.autoLoadExtensions();
 };
 
 IDE_Morph.prototype.deserializeSpritesString = function (str) {
@@ -6141,7 +6153,12 @@ IDE_Morph.prototype.deserializeSpritesString = function (str) {
             this.stage.globalBlocks.push(def);
             this.stage.replaceDoubleDefinitionsFor(def);
         });
-        // notice, there should not be any local blocks in this part of
+        // load global variables which the custom blocks rely on
+        if (blocks.data) {
+            this.globalVariables.merge(blocks.data);
+            this.flushBlocksCache('variables');
+        }
+        // notice, there should not be any local blocks or datain this part of
         // the model instead we're expecting them inside each sprite
         this.flushPaletteCache();
         this.refreshPalette();
@@ -6202,6 +6219,7 @@ IDE_Morph.prototype.rawOpenScriptString = function (str) {
         'Imported Script.',
         2
     );
+    this.autoLoadExtensions();
 };
 
 IDE_Morph.prototype.deserializeScriptString = function (str) {
@@ -6223,6 +6241,14 @@ IDE_Morph.prototype.deserializeScriptString = function (str) {
             this.currentSprite.customBlocks.push(def);
             this.currentSprite.replaceDoubleDefinitionsFor(def);
         });
+        if (blocks.data) {
+            this.globalVariables.merge(blocks.data);
+            this.flushBlocksCache('variables');
+        }
+        if (blocks.localData) {
+            this.currentSprite.variables.merge(blocks.localData);
+            this.flushBlocksCache('variables');
+        }
         this.flushPaletteCache();
         this.refreshPalette();
         this.createCategories();
@@ -6325,6 +6351,7 @@ IDE_Morph.prototype.rawOpenDataString = function (str, name, type) {
         dlg.createLabel();
         dlg.popUp(this.world());
     }
+    this.autoLoadExtensions();
 };
 
 IDE_Morph.prototype.openProjectName = function (name) {
@@ -6353,6 +6380,46 @@ IDE_Morph.prototype.openProject = function (project) {
         null, // data
         true // pause generic WHEN hat blocks
     );
+};
+
+IDE_Morph.prototype.autoLoadExtensions = function () {
+    // experimental - allow auto-loading extensions from urls specified
+    // in global variables whose names start with "__module__".
+    // Still very much under construction, also needs to be tweaked for
+    // asynch operation
+    var urls = [];
+    Object.keys(this.globalVariables.vars).forEach(vName => {
+        var val;
+        if (vName.startsWith('__module__')) {
+            val = this.globalVariables.getVar(vName);
+            if (isString(val)) {
+                urls.push(val);
+            }
+        }
+    });
+    urls.forEach(url => {
+        var scriptElement;
+        if (contains(SnapExtensions.scripts, url)) {
+            return;
+        }
+        if (Process.prototype.enableJS || SnapExtensions.urls.some(
+            any => url.indexOf(any) === 0)
+        ) {
+            scriptElement = document.createElement('script');
+            scriptElement.onload = () => {
+                SnapExtensions.scripts.push(url);
+            };
+            document.head.appendChild(scriptElement);
+            scriptElement.src = url;
+        /*
+        } else {
+            // throw new Error(
+                'unlisted extension url:\n"' + url + '"\n' +
+                'JavaScript extensions for Snap!\nare turned off'
+            );
+        */
+        }
+    });
 };
 
 IDE_Morph.prototype.switchToScene = function (
@@ -7859,13 +7926,21 @@ IDE_Morph.prototype.getURL = function (url, callback, responseType) {
 IDE_Morph.prototype.blocksLibraryXML = function (
     definitions,
     moreCategories,
-    asFile
+    asFile,
+    dataFrame, // optional: include global variable dependencies in libraries
+    localData // optional: include sprite-local variable dependencies
 ) {
     // answer an XML string encoding of an array of CustomBlockDefinitions
     var globals = definitions.filter(def => def.isGlobal),
         locals = definitions.filter(def => !def.isGlobal),
         glbStr = globals.length ? this.serializer.serialize(globals, true) : '',
         locStr = locals.length ? this.serializer.serialize(locals, true) : '',
+        dtaStr = dataFrame && dataFrame.names().length ?
+            this.serializer.serialize(dataFrame, true)
+            : '',
+        ldtStr = localData && localData.names().length ?
+            this.serializer.serialize(localData, true)
+            : '',
         cats = moreCategories || [],
         appStr = ' app="' +
             this.serializer.app +
@@ -7879,6 +7954,8 @@ IDE_Morph.prototype.blocksLibraryXML = function (
         this.paletteXML(definitions.map(def => def.category).concat(cats)) +
         (globals.length ? glbStr : '') +
         (locals.length ? ('<local>' + locStr + '</local>') : '') +
+        (dtaStr ? '<variables>' + dtaStr + '</variables>' : '') +
+        (ldtStr ? '<local-variables>' + ldtStr + '</local-variables>' : '') +
         '</blocks>';
 };
 

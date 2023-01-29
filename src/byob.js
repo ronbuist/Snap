@@ -111,7 +111,7 @@ ArgLabelMorph, embedMetadataPNG*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.byob = '2023-January-18';
+modules.byob = '2023-January-23';
 
 // Declarations
 
@@ -4476,6 +4476,10 @@ BlockExportDialogMorph.prototype.init = function (serializer, blocks, target) {
     // additional properties:
     this.serializer = serializer;
     this.blocks = blocks.slice(0);
+    this.globalData = null; // forked global var frame with data dependencies
+    this.localData = null; // forked local var frame with data dependencies
+    this.globalVarNames = null;
+    this.localVarNames = null;
     this.handle = null;
 
     // initialize inherited properties:
@@ -4490,8 +4494,33 @@ BlockExportDialogMorph.prototype.init = function (serializer, blocks, target) {
     this.labelString = 'Export blocks';
     this.createLabel();
 
+    // determine data dependencies
+    this.collectDataDependencies();
+
     // build contents
     this.buildContents();
+};
+
+BlockExportDialogMorph.prototype.collectDataDependencies = function () {
+    var names = [];
+
+    // collect names of all data dependencies
+    this.blocks.forEach(def =>
+        def.dataDependencies().forEach(name => {
+            if (!names.includes(name)) {
+                names.push(name);
+            }
+        })
+    );
+
+    // collect sprite-local data dependencies
+    this.localData = this.target.currentSprite.variables.fork(names);
+    this.localVarNames = this.localData.names(true).sort(); // include hidden
+
+    // collect remaining global data dependencies
+    names = names.filter(name => !this.localVarNames.includes(name));
+    this.globalData = this.target.stage.globalVariables().fork(names);
+    this.globalVarNames = this.globalData.names(true).sort(); // include hidden
 };
 
 BlockExportDialogMorph.prototype.buildContents = function () {
@@ -4513,6 +4542,72 @@ BlockExportDialogMorph.prototype.buildContents = function () {
     // populate palette
     x = palette.left() + padding;
     y = palette.top() + padding;
+
+    // - create selectors for global variables
+    this.globalVarNames.forEach(vName => {
+        block = SpriteMorph.prototype.variableBlock(vName);
+        block.isDraggable = false;
+        block.isTemplate = true;
+        block.isToggleLabel = true; // mark as unrefreshable label
+        checkBox = new ToggleMorph(
+            'checkbox',
+            this,
+            () => {
+                var idx = this.globalVarNames.indexOf(vName);
+                if (idx > -1) {
+                    this.globalVarNames.splice(idx, 1);
+                } else {
+                    this.globalVarNames.push(vName);
+                }
+            },
+            null,
+            () => contains(this.globalVarNames, vName),
+            null,
+            null,
+            this.target ? block : block.fullImage()
+        );
+        checkBox.setPosition(new Point(
+            x,
+            y + (checkBox.top() - checkBox.toggleElement.top())
+        ));
+        palette.addContents(checkBox);
+        y += checkBox.fullBounds().height() + padding;
+    });
+    y += padding;
+
+    // - create selectors for local variables
+    this.localVarNames.forEach(vName => {
+        block = SpriteMorph.prototype.variableBlock(vName, true); // isLocal
+        block.isDraggable = false;
+        block.isTemplate = true;
+        block.isToggleLabel = true; // mark as unrefreshable label
+        checkBox = new ToggleMorph(
+            'checkbox',
+            this,
+            () => {
+                var idx = this.localVarNames.indexOf(vName);
+                if (idx > -1) {
+                    this.localVarNames.splice(idx, 1);
+                } else {
+                    this.localVarNames.push(vName);
+                }
+            },
+            null,
+            () => contains(this.localVarNames, vName),
+            null,
+            null,
+            this.target ? block : block.fullImage()
+        );
+        checkBox.setPosition(new Point(
+            x,
+            y + (checkBox.top() - checkBox.toggleElement.top())
+        ));
+        palette.addContents(checkBox);
+        y += checkBox.fullBounds().height() + padding;
+    });
+    y += padding;
+
+    // - create selectors for blocks
     SpriteMorph.prototype.allCategories().forEach(category => {
         this.blocks.forEach(definition => {
             if (definition.category === category) {
@@ -4608,6 +4703,7 @@ BlockExportDialogMorph.prototype.collectDependencies = function () {
             this.blocks.push(def);
         }
     });
+    this.collectDataDependencies();
     // refresh the checkmarks
     this.body.contents.children.forEach(checkBox => {
         checkBox.refresh();
@@ -4631,7 +4727,13 @@ BlockExportDialogMorph.prototype.exportBlocks = function () {
 
     if (this.blocks.length) {
         ide.saveXMLAs(
-            ide.blocksLibraryXML(this.blocks, null, true), // as file
+            ide.blocksLibraryXML(
+                this.blocks,
+                null,
+                true, // as file
+                this.globalData.fork(this.globalVarNames),
+                this.localData.fork(this.localVarNames)
+            ),
             (ide.getProjectName() || localize('untitled')) +
                 ' ' +
                 localize('blocks'
