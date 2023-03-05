@@ -86,11 +86,11 @@ BlockVisibilityDialogMorph, ThreadManager, isString, SnapExtensions*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.gui = '2022-January-25';
+modules.gui = '2023-March-01';
 
 // Declarations
 
-var SnapVersion = '8.1.0-dev';
+var SnapVersion = '8.2.0';
 
 var IDE_Morph;
 var ProjectDialogMorph;
@@ -224,7 +224,7 @@ IDE_Morph.prototype.setDefaultDesign();
 
 // IDE_Morph instance creation:
 
-function IDE_Morph(config = { autofill: true }) {
+function IDE_Morph(config = {}) {
     this.init(config);
 }
 
@@ -234,8 +234,10 @@ function IDE_Morph(config = { autofill: true }) {
     creating an instance. This is still very much under construction. Currently
     the following options are available:
 
+        noAutoFill      bool, do not let the IDE fill the whole World canvas
         path            str, path to additional resources (translations)
         load:           str, microworld file name (xml)
+        onload:         callback, called when the microworld is loaded
         design:         str, currently "flat" (bright) or "classic" (dark)
         border:         num, pixels surrounding the IDE, default is none (zero)
         lang:           str, translation to be used, e.g. "de" for German
@@ -307,7 +309,7 @@ IDE_Morph.prototype.init = function (config) {
     this.embedOverlay = null;
     this.isEmbedMode = false;
 
-    this.isAutoFill = !!config.autofill;
+    this.isAutoFill = !config.noAutoFill;
     this.isAppMode = false;
     this.isSmallStage = false;
     this.filePicker = null;
@@ -755,6 +757,9 @@ IDE_Morph.prototype.applyConfigurations = function () {
                         }
                         this.hasChangedMedia = true;
                         this.applyPaneHidingConfigurations();
+                        if (cnf.onload) {
+                            cnf.onload();
+                        }
                     }
                 );
             } else {
@@ -764,6 +769,10 @@ IDE_Morph.prototype.applyConfigurations = function () {
                 this.applyPaneHidingConfigurations();
             }
         };
+
+    if (!Object.keys(cnf).length) {
+        return;
+    }
 
     // design
     if (cnf.design) {
@@ -1364,6 +1373,7 @@ IDE_Morph.prototype.createControlBar = function () {
                     (myself.isSmallStage ? myself.stageRatio : 1) -
                     (myself.config.border || 0)
             );
+            x = Math.max(x, this.left());
         }
         [stageSizeButton, appModeButton].forEach(button => {
                 x += padding;
@@ -2649,12 +2659,9 @@ IDE_Morph.prototype.setExtent = function (point) {
 
     // determine the minimum dimensions making sense for the current mode
     if (this.isAppMode) {
-        if (this.isEmbedMode) {
-            minExt = new Point(100, 100);
-        } else {
-            minExt = this.stage.dimensions.add(
-                this.controlBar.height() + 10
-            );
+        minExt = new Point(100, 100);
+        if (!this.isEmbedMode) {
+            minExt = minExt.add(this.controlBar.height() + 10);
         }
     } else if (cnf.noSprites) {
         minExt = new Point(100, 100);
@@ -2669,18 +2676,24 @@ IDE_Morph.prototype.setExtent = function (point) {
     }
     ext = point.max(minExt);
 
-    // adjust stage ratio if necessary
-    if (!cnf.noSprites) {
-        maxWidth = ext.x -
-            (200 + this.spriteBar.tabBar.width() + (this.padding * 2));
-        minWidth = SpriteIconMorph.prototype.thumbSize.x * 3;
-        maxHeight = (ext.y - SpriteIconMorph.prototype.thumbSize.y * 3.5);
-        minRatio = minWidth / this.stage.dimensions.x;
-        maxRatio = Math.min(
-            (maxWidth / this.stage.dimensions.x),
-            (maxHeight / this.stage.dimensions.y)
-        );
-        this.stageRatio = Math.min(maxRatio, Math.max(minRatio, this.stageRatio));
+    if (!this.isAppMode) {
+        // in edit mode adjust stage ratio if necessary
+        // (in presentation mode this is already handled separately)
+        if (!cnf.noSprites) {
+            maxWidth = ext.x -
+                (200 + this.spriteBar.tabBar.width() + (this.padding * 2));
+            minWidth = SpriteIconMorph.prototype.thumbSize.x * 3;
+            maxHeight = (ext.y - SpriteIconMorph.prototype.thumbSize.y * 3.5);
+            minRatio = minWidth / this.stage.dimensions.x;
+            maxRatio = Math.min(
+                (maxWidth / this.stage.dimensions.x),
+                (maxHeight / this.stage.dimensions.y)
+            );
+            this.stageRatio = Math.min(
+                maxRatio,
+                Math.max(minRatio,this.stageRatio)
+            );
+        }
     }
 
     // apply
@@ -3860,6 +3873,30 @@ IDE_Morph.prototype.newName = function (name, elements) {
     return newName;
 };
 
+// IDE_Morph identifying sprites by name
+
+IDE_Morph.prototype.spriteNamed = function (name) {
+    // answer the SnapObject (sprite or stage) indicated by its name
+    // or the currently edited object if no name is given or none is found
+    var match;
+    if (name === this.stage.name) {
+        return this.stage;
+    }
+    match = detect(
+        this.sprites,
+        sprite => sprite.name === name
+    );
+    if (!match) {
+        // check if the sprite in question is currently being
+        // dragged around
+        match = detect(
+            this.world().hand.children,
+            morph => morph instanceof SpriteMorph && morph.name === name
+        );
+    }
+    return match || this.currentSprite;
+};
+
 // IDE_Morph deleting scripts
 
 IDE_Morph.prototype.removeBlock = function (aBlock, justThis) {
@@ -4290,18 +4327,6 @@ IDE_Morph.prototype.settingsMenu = function () {
         CamSnapshotDialogMorph.prototype.enableCamera,
         'uncheck to disable\ncamera support',
         'check to enable\ncamera support',
-        true
-    );
-    addPreference(
-        'Use CPU for graphics',
-        () => window.keepCanvasInCPU = !window.keepCanvasInCPU,
-        window.keepCanvasInCPU,
-        'EXPERIMENTAL! optimize Canvas2D readback operations\n' +
-            'using the "willReadFrequently" attribute at the expense\n' +
-            'of slowing down rendering in some web browsers',
-        'EXPERIMENTAL! optimize Canvas2D readback operations\n' +
-            'using the "willReadFrequently" attribute at the expense\n' +
-            'of slowing down rendering in some web browsers',
         true
     );
     menu.addLine(); // everything visible below is persistent
@@ -5198,6 +5223,7 @@ IDE_Morph.prototype.aboutSnap = function () {
         + 'Sound primitives'
         + '\nJadga Hügle: Icons and countless other contributions'
         + '\nSimon Walters & Xavier Pi: MQTT extension'
+        + '\nVictoria Phelps: Reporter results tracing'
         + '\nIvan Motyashov: Initial Squeak Porting'
         + '\nLucas Karahadian: Piano Keyboard Design'
         + '\nDavide Della Casa: Morphic Optimizations'
@@ -7935,10 +7961,10 @@ IDE_Morph.prototype.blocksLibraryXML = function (
         locals = definitions.filter(def => !def.isGlobal),
         glbStr = globals.length ? this.serializer.serialize(globals, true) : '',
         locStr = locals.length ? this.serializer.serialize(locals, true) : '',
-        dtaStr = dataFrame && dataFrame.names().length ?
+        dtaStr = dataFrame && dataFrame.names(true).length ?
             this.serializer.serialize(dataFrame, true)
             : '',
-        ldtStr = localData && localData.names().length ?
+        ldtStr = localData && localData.names(true).length ?
             this.serializer.serialize(localData, true)
             : '',
         cats = moreCategories || [],

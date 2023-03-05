@@ -2,12 +2,253 @@
 
 ## in development:
 * **New Features:**
+* **Notable Changes:**
+* **Notable Fixes:**
+* **Documentation Updates:**
+* **Translation Updates:**
+
+## 8.2.0:
+* **New Features:**
+    * AND / OR are now variadic (and hyper!), thanks, Dan, for the suggestion
+    * all comparison operators are now variadic
+    * new  "distribution" selector in the list attribute reporter's dropdown menu
+* **Notable Changes:**
+    * removed variadic reporters library (because the primitives are now variadic)
+    * MQTT library update, thanks, Simon and Xavier
+* **Notable Fixes:**
+    * fixed "rename" and "rename all" for custom block formal parameters
+    * fixed accessing random list elements
+    * TuneScope hotfix, thanks, Harsh, Glen & team!
+    * fixed including hidden variables when exporting blocks
+    * fixed #3183 - determining the length of huge strings fails
+* **Translation Updates:**
+    * German
+    * Catalan, thanks, Joan!
+
+### 2023-03-01
+* prepared v8.1 release
+
+### 2023-02-28
+* Catalan translation update, thanks, Joan!
+* v8.2-rc2
+
+### 2023-02-27
+* adjusted Kannada translation for variadic comparison ops
+* adjusted Korean translation for variadic comparison ops
+* adjusted Malayalam translation for variadic comparison ops
+* adjusted Norwegian translation for variadic comparison ops
+* adjusted Polish translation for variadic comparison ops
+* adjusted Portuguese translation for variadic comparison ops
+* adjusted Romanian translation for variadic comparison ops
+* adjusted Russian translation for variadic comparison ops
+* adjusted Slovenian translation for variadic comparison ops
+* adjusted Slovakian translation for variadic comparison ops
+* adjusted Swedish translation for variadic comparison ops
+* adjusted Tamil translation for variadic comparison ops
+* adjusted Telagu translation for variadic comparison ops
+* adjusted Turkish translation for variadic comparison ops
+* adjusted Ukrainian translation for variadic comparison ops
+* adjusted Simplified Chinese translation for variadic comparison ops
+* adjusted Traditional Chinese translation for variadic comparison ops
+* adjusted Greek translation for variadic comparison ops
+* adjusted Dutch translation for variadic comparison ops
+* adjusted Catalan translation for variadic comparison ops
+* adjusted Brazilian Portuguese translation for variadic comparison ops
+* lists: tweaked distribution()
+* German translation update for list "distribution"
+* threads: tweaked "unicode of"
+* objects: changed 'When ... is edited' hat block label to lowercase
+* v8.2-rc1
+
+### 2023-02-26
+* threads: fixed #3183 - determining the length of huge strings fails
+* blocks, threads, lists: added "distribution" selector to list attribute reporter
+
+### 2023-02-21
+* blocks, objects, threads: made all comparison operators variadic
+* blocks: tweaked layout for variadic predicates
+* blocks, objects: changed "any !=" to "all pairs !=", thanks, Dan!
+* blocks: changed "all pairs !=" to "neighbors !=", thanks, Brian!
+* gui: fixed #3186 - include hidden variables when exporting blocks
+* German translation update
+* adjusted Bulgarian translation for variadic comparison ops
+* adjusted Bangla translation for variadic comparison ops
+* adjusted Valencian Catalan translation for variadic comparison ops
+* adjusted Czech translation for variadic comparison ops
+* adjusted Danish translation for variadic comparison ops
+* adjusted Esperanto translation for variadic comparison ops
+* adjusted Spanish translation for variadic comparison ops
+* adjusted Estonian translation for variadic comparison ops
+* adjusted Basque translation for variadic comparison ops
+* adjusted Finnish translation for variadic comparison ops
+* adjusted French translation for variadic comparison ops
+* adjusted Galician translation for variadic comparison ops
+* adjusted Hebrew translation for variadic comparison ops
+* adjusted Hindi translation for variadic comparison ops
+* adjusted Arabic translation for variadic comparison ops
+* adjusted Croation translation for variadic comparison ops
+* adjusted Hungarian translation for variadic comparison ops
+* adjusted Interlingua translation for variadic comparison ops
+* adjusted Indonesian translation for variadic comparison ops
+* adjusted Italian translation for variadic comparison ops
+* adjusted Japanese translation for variadic comparison ops
+* adjusted Japanese Hira translation for variadic comparison ops
+
+### 2023-02-20
+* TuneScope hotfix, thanks, Harsh & team!
+* threads: fixed accessing random list elements
+
+### 2023-02-17
+* MQTT library update, thanks Simon and Xavier!
+* removed variadic reporters library (because the primitives are now variadic)
+
+### 2023-02-16
+* adjusted Arabic translation for Boolean ops
+* adjusted Bulgarian translation for Boolean ops
+* blocks: fixed "rename all" for custom block formal parameters
+* blocks: fixed "rename" for custom block formal parameters
+* threads: refactored variadic AND, OR into generalized reportAssociativeBool()
+* adjusted Bangla translation for Boolean ops
+* adjusted Valencian Catalan translation for Boolean ops
+* adjusted Czech translation for Boolean ops
+* adjusted Danish translation for Boolean ops
+* adjusted Esperanto translation for Boolean ops
+* adjusted Spanish translation for Boolean ops
+* adjusted Estonian translation for Boolean ops
+* adjusted Basque translation for Boolean ops
+* adjusted Finnish translation for Boolean ops
+* adjusted French translation for Boolean ops
+* adjusted Galician translation for Boolean ops
+* adjusted Hebrew translation for Boolean ops
+* adjusted Hindi translation for Boolean ops
+* adjusted Croatian translation for Boolean ops
+* adjusted Hungarian translation for Boolean ops
+* adjusted Interlingua translation for Boolean ops
+* adjusted Indinesian translation for Boolean ops
+* adjusted Italian translation for Boolean ops
+* adjusted Japanese translation for Boolean ops
+* adjusted Japanese Hiragana translation for Boolean ops
+* adjusted Kannada translation for Boolean ops
+* adjusted Korean translation for Boolean ops
+* adjusted Malayalam translation for Boolean ops
+* adjusted Norwegian translation for Boolean ops
+* adjusted Polish translation for Boolean ops
+* adjusted Portuguese translation for Boolean ops
+* adjusted Romanian translation for Boolean ops
+* adjusted Russian translation for Boolean ops
+* adjusted Slovenian translation for Boolean ops
+* adjusted Slovakian translation for Boolean ops
+* adjusted Swedish translation for Boolean ops
+* adjusted Tamil translation for Boolean ops
+* adjusted Telagu translation for Boolean ops
+* adjusted Turkish translation for Boolean ops
+* adjusted Ukrainian translation for Boolean ops
+* adjusted Simplified Chinese translation for Boolean ops
+* adjusted Traditional Chinese translation for Boolean ops
+* adjusted Greek translation for Boolean ops
+* adjusted Dutch translation for Boolean ops
+* adjusted Catalan translation for Boolean ops
+* adjusted Brazilian Portuguese translation for Boolean ops
+* threads: accept Boolean values in "with input list" variant of variadic Boolean ops
+* threads: let associative Boolean ops handle empty input lists
+* threads: refactored evaluation to lazy initialize args
+* threads: fixed base cases for variadic associative Boolean ops 
+
+### 2023-02-15
+* pushed dev version to 8.2
+* blocks, objects, threads: made AND variadic
+* blocks, objects, threads: made OR variadic
+* adjusted English translation: removed "any" -> "random" rewording
+* blocks: renamed all 'any' selectors in dropdowns into 'random'
+* help: adjusted help screen file names for AND / OR
+* adjusted German translation for Boolean ops
+* blocks: added translation support for infix labels
+
+### 2023-02-13
+* new dev version
+
+## 8.1.6:
+* **Notable Fixes:**
+    * fixed playing back a list of samples "until done", thanks for the report, @mjguzdial!
+    * fixed messed up stage layout when switching back from presentation to edit mode on small displays, thanks for the report, Eckart!
+    * fixed scaling down large stage sizes in presentation mode on small screens
+* **Documentation Updates:**
+    * updated API documentation for onload() configuration callback option
+
+### 2023-02-10
+* gui: fixed scaling down large stage sizes in presentation mode on small screens
+* gui: prepared v8.1.6 patch
+
+### 2023-02-09
+* gui: fixed messed up stage layout when switching back from presentation to edit mode on small displays, thanks for the report, Eckart!
+
+### 2023-02-08
+* new dev version
+* gui: added onload() callback to configuration dictionary
+* updated API documentation for onload() configuration callback option
+* threads: fixed playing back a list of samples "until done", thanks for the report, @mjguzdial!
+
+## 8.1.5:
+* **Notable Fixes:**
+    * fixed a scope highlighting bug
+
+### 2023-02-06
+* blocks: fixed a scope highlighting bug
+* gui: prepared v8.1.5 patch
+
+## 8.1.4:
+* **Notable Fixes:**
+    * blocks: fixed setting a default value for Boolean input slots in custom blocks
+
+### 2023-02-05
+* blocks: fixed setting a default value for Boolean input slots in custom blocks
+* gui: prepared v8.1.4 patch
+
+## 8.1.3:
+* **Notable Fixes:**
+    * fixed jit-compiling dropdown choices (e.g. "item /last/ of list")
+
+### 2023-02-04
+* threads: fixed jit-compiling dropdown choices (e.g. "item /last/ of list")
+* gui: prepared v8.1.3 patch
+
+## 8.1.2:
+* **Notable Fixes:**
+    * fixed #3176 - triggering user interaction hat blocks
+
+### 2023-02-04
+* objects: fixed #3176 - triggering user interaction hat blocks
+* gui: prepared v8.1.2 patch
+
+## 8.1.1:
+* **Notable Fixes:**
+    * loading old projects only hides new blocks if they already contain hidden ones 
+    * distinguish selected named list indices ("random", "last") from same-named typed-in dictionary keys
+    * fixed opening projects when the language is set to non-English 
+* **Documentation Updates:**
+    * updated API documentation for "noAutoFill" configuration setting
+
+### 2023-02-03
+* threads: fixed distinguishing selected named indices ("random", "last") from same-named typed-in dictionary keys
+* store: tweaked loading literal input slots
+* blocks: disabled automatic translation of typed-in arguments that match translatable drop-down choices
+* gui: fixed opening projects when the language is set to non-English
+* updated API documentation for "noAutoFill" configuration setting
+* prepared v8.1.1 patch
+
+### 2023-02-02
+* new dev version
+* store: fixed #3175 - loading old projects only hides new blocks if they already contain hidden ones 
+
+## 8.1.0:
+* **New Features:**
+    * lists as dictionaries: alphanumeric indices for lists, access fields (JSON) and columns (CSV) by name
     * include custom block data dependencies in libraries, eliminates the need for initialization routines creating and populating variables required by custom block definitions
     * visually highlight variable scope when mouse-hovering over a variable declaration in visible stepping mode
     * visually highlight the variable declaration of variable accessor blocks when mouse-hovering over them in visible stepping mode
     * visually highlight senders / receivers when mouse-hovering over messaging blocks in visible stepping mode
-    * new "When (sprite) is edited" event hat block, supports light user interaction logging
     * show intermediate results when debugging a script, i.e. when clicking on a script in visible stepping mode. Thanks, Vic!
+    * new "When (sprite) is edited" event hat block, supports light user interaction logging
     * new PIPE primitive in the control category
     * "touching" predicate now  also accepts a 2-item list representing x/y-coordinates to check for collision with an arbitrary point 
     * hyper-rays: support lists of relative angles in the left "ray length TO sprite" input slot for instant fields of vision
@@ -25,6 +266,8 @@
     * extensions can add custom buttons to the palette, thanks, Bernat!
     * added retina support for inlined morphic worlds, enabling high-res embedding of Snap! components into other websites
     * added configuration options for embedding Snap! into other websites
+    * new API methods for synchronizing scripts across sprites and Snap! instances
+    * new API methods for signalling scripts through highlighting blocks that correspond to marked portions of mapped text code
 * **Notable Changes:**
     * enabled same-named global and sprite-local variables 
     * no more error messages when the number of actual arguments doesn't match the number of implicit parameters
@@ -38,7 +281,6 @@
     * TuneScope extension update, thanks, Harsh, Jo and Glen!
     * SciSnap2 extension update, thanks, Eckart!
     * MQTT library update, thanks, Simon!
-    * optimized canvas for reading back image data (slows down rendering, turned off by default)
     * removed PIPE from all libraries (b/c it is now a built-in primitive in the control blocks palette)
     * updated "Codification" example project
     * hide "stage selected - no motion primitives" text when hiding the category names in single palette mode
@@ -84,29 +326,59 @@
 * **Documentation Updates:**
     * new "docs" folder for documentation files, thanks, Michael!
     * new doc for extensions, thanks, Michael!
+    * extended API documentation
 * **Translation Updates:**
     * German
     * Catalan, thanks, Joan!
     * Dutch, thanks, Hans!
     * Brazilian Portuguese, thanks, Artur!
 
-### 2023-10-29
+### 2023-02-01
+* added remote modules for CS10 and BJC, thanks, Michael!
+* updated version history
+* v8.1-rc5
+* fixed another "unused blocks" glitch for dependencies
+* v8.1-rc6
+* added Victoria to the credits tab
+* v8.1-rc7
+* prepared v8.1 release
+
+### 2023-10-31
+* blocks, threads, objects, lists: alphanumeric indices for lists, experimental
+* byob: fixed "unused blocks" dialog
+* morphic, gui: removed experimental canvas image data optimization
+* v8.1-rc2
+* alphanumeric index for insert
+* v8.1-rc3
+* adjusted translations to changed block spec for "letter of"
+* v8.1-rc4
+
+### 2023-01-30
+* gui: added spriteNamed() helper
+* api: added getSpriteScriptsXML()
+* api: added loadSpriteScriptsXML()
+* api: added unflashSpritScripts()
+* api: added flashSpritScripts()
+* updated and extended API documentation
+* v8.1-rc1
+
+### 2023-01-29
 * shrunk some new built-in costumes, to make them load faster
 
-### 2023-10-27
+### 2023-01-27
 * threads: show intermediate results when debugging a script, i.e. when clicking on a script in visible stepping mode. Thanks, Vic!
 * threads: tweaked above to correctly display lists and tables, and also handle custom reporters
 
-### 2023-10-26
+### 2023-01-26
 * locale: added Artur to the translators credits
 * blocks: enabled scope-highlighting for touch devices, experimental
 
-### 2023-10-25
+### 2023-01-25
 * gui: experimental autoLoadExtensions() mechanism
 * Brazilian Portuguese translation update, thanks, Artur!
 * updated version history
 
-### 2023-10-23
+### 2023-01-23
 * gui, store: read back data dependencies included in exported libraries
 * byob, gui: distinguish between global and sprite-local data dependencies
 * gui, store: read back local data dependencies included in exported libraries
@@ -115,59 +387,59 @@
 * objects, gui: include global custom block data dependencies in exported sprites
 * objects: fixed #3150 - renaming a transient variable removes its transience
 
-### 2023-10-22
+### 2023-01-22
 * byob, gui, threads: new file structure for libraries to include global data dependencies
 
-### 2023-10-21
+### 2023-01-21
 * threads: fixed fork()
 * byob: init data dependencies for block export dialog
 * byob: added data dependencies UI to block export dialog
 
-### 2023-10-20
+### 2023-01-20
 * lists: refactored some helper functions
 * threads: added VariableFrame >> branch()
 * threads: added VariableFrame >> merge()
 * threads: renamed branch() to fork()
 
-### 2023-10-19
+### 2023-01-19
 * gui, extensions: added user edit event for language change
 
-### 2023-10-18
+### 2023-01-18
 * blocks: added "scriptOnly" flag to rewind()
 * byob: added CustomBlockDefinition >> dataDependencies()
 
-### 2023-10-17
+### 2023-01-17
 * TuneScope update, thanks, Harsh, Jo and Glen!
 * MQTT library update, thanks, Simon!
 
-### 2023-10-16
+### 2023-01-16
 * extensions: refactored extension primitive "ide_synchscripts(obj, xml)" into "syn_scripts([xml])"
 * objects: added Sprite >> synchScriptsFrom(xml) method (internal)
 * updated pyret.html with example code for exporting & importing xml
 
-### 2023-10-13
+### 2023-01-13
 * morphic: catch occasional stack overflow when embedding data into a PNG
 * gui: fixed #3158
 
-### 2023-10-12
+### 2023-01-12
 * updated inline.html test page with "noDevWarning" configuration
 * objects: tweaked sprite name-change user edit event details
 
-### 2023-10-11
+### 2023-01-11
 * objects: added serialized scripts (w/o dependencies) to scripts-related user-logging events
 * extensions: new extension primitive: "ide_synchscripts(obj, xml)", experimental, might change
 * gui: added configuration option for "noDevWarning"
 
-### 2023-10-10
+### 2023-01-10
 * gui: added openScriptsOnlyString() method to IDE, experimental
 
-### 2023-10-09
+### 2023-01-09
 * store, objects: hide new primitives in old microworlds
 * gui, objects: enable "JS function" primitive to be hidden / shown independently from enabling JavaScript extensions
 * threads: explicitly garbage collect (i.e. remove) terminated audio elements in case they haven't been removed already
 * objects: don't crash the "play frequency" block when passing a non-numerical input
 
-### 2023-10-05
+### 2023-01-05
 * threads: COMBINing an empty list with JOIN results in an empty text rather than in the number zero
 * gui: enable JavaScript extensions when running Snap! locally without a webserver (location.protocoll "file:")
 * Catalan translation update, thanks, Joan!
