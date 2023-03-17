@@ -65,7 +65,7 @@ StagePickerMorph, CustomBlockDefinition*/
 
 /*jshint esversion: 11, bitwise: false, evil: true*/
 
-modules.threads = '2023-February-27';
+modules.threads = '2023-March-16';
 
 var ThreadManager;
 var Process;
@@ -2040,7 +2040,7 @@ Process.prototype.doInsertInList = function (element, index, list) {
         return null;
     }
     if (index instanceof Array) {
-        if (index[0] === 'any') {
+        if (index[0] === 'random') {
             idx = this.reportBasicRandom(1, list.length() + 1);
         } else if (index[0] === 'last') {
             idx = list.length() + 1;
@@ -2065,7 +2065,7 @@ Process.prototype.doReplaceInList = function (index, list, element) {
         return null;
     }
     if (index instanceof Array) {
-        if (index[0] === 'any') {
+        if (index[0] === 'random') {
             idx = this.reportBasicRandom(1, list.length() + 1);
         } else if (index[0] === 'last') {
             idx = list.length();
@@ -3356,6 +3356,9 @@ Process.prototype.doPlaySoundUntilDone = function (name) {
     if (name === null || this.context.activeAudio.ended
             || this.context.activeAudio.terminated) {
         if (this.context.activeAudio && this.context.activeAudio.remove) {
+            this.context.activeAudio.currentSrc = null;
+            this.context.activeAudio.src = "";
+            this.context.activeAudio.srcObject = null;
             this.context.activeAudio.remove();
         }
         return null;
@@ -3371,6 +3374,9 @@ Process.prototype.doStopAllSounds = function () {
             if (thread.context) {
                 thread.context.stopMusic();
                 if (thread.context.activeAudio) {
+                    thread.context.activeAudio.currentSrc = null;
+                    thread.context.activeAudio.src = "";
+                    thread.context.activeAudio.srcObject = null;
                     thread.context.activeAudio.remove();
                     thread.popContext();
                 }
@@ -4668,7 +4674,7 @@ Process.prototype.reportBasicLetter = function (idx, string) {
     var str, i;
 
     str = isNil(string) ? '' : string.toString();
-    if (this.inputOption(idx) === 'any') {
+    if (this.inputOption(idx) === 'random') {
         idx = this.reportBasicRandom(1, str.length);
     }
     if (this.inputOption(idx) === 'last') {

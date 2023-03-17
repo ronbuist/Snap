@@ -3,9 +3,62 @@
 ## in development:
 * **New Features:**
 * **Notable Changes:**
+    * improved browser resource management for graphics and sounds
+    * updated audio comp library with a faster (hyper) version of the "Hz for secs" reporter
+    * new "fade-in" block in the audio comp library that lets you reduce audible "clicks" in sounds computed from raw samples
 * **Notable Fixes:**
 * **Documentation Updates:**
 * **Translation Updates:**
+
+### 2023-03-17
+* objects, guj: added "dynamic sprites rendering" hidden option setting for debugging purposes
+* audio comp library: new "fade-in" block that lets you reduce audible "clicks" in sounds computed from raw samples
+
+### 2023-03-16
+* objects: dynamically cache sprite image depending on graphic effects
+* morphic: fixed scale when grabbing uncached image morphs
+* objects, threads: fixed #3075 (except Chrome still sabotages sounds, browsers suck)
+* updated audio comp library with a faster (hyper) version of the "Hz for secs" reporter
+
+### 2023-03-15
+* objects: turned off image caching for sprites, experimental
+
+### 2023-03-14
+* new dev version
+
+## 8.2.3:
+* **Notable Fixes:**
+    * fixed blocks search for scenes, thanks, Peter, for the report!
+
+## 8.2.2:
+* **Notable Fixes:**
+    * fixed "letter random of text" selector
+    * fixed "insert thing at random of list" selector
+    * fixed "replace item random of list with thing" selector
+    * fixed #3193 (invoking the scenes menu inside a custom block editor)
+
+### 2023-03-13
+* prepared v8.2.2 release
+
+### 2023-03-10
+* new dev version
+* threads: fixed "letter random of text" selector
+* threads: fixed "insert thing at random of list" selector
+* threads: fixed "replace item random of list with thing" selector
+* blocks: fixed #3193 (invoking the scenes menu inside a custom block editor)
+
+## 8.2.1:
+* **Notable Fixes:**
+    * fixed #3190 - unable to search blocks in the stage
+    * fixed finding blocks by typing their infix or collapse variants (e.g. "and", "or", "sum", "product" etc.)
+    * fixed #3191 - keep certain warning dialogs open when switching scenes
+
+### 2023-03-05
+* new dev version
+* objects: fixed #3190 - unable to search blocks in the stage
+* objects: fixed finding blocks by typing their infix or collapse variants (e.g. "and", "or", "sum", "product" etc.)
+* gui, widgets, store: fixed #3191 - keep warning dialogs open when switching scenes
+* prepared v8.2.1 release
 
 ## 8.2.0:
 * **New Features:**
@@ -26,7 +79,7 @@
     * Catalan, thanks, Joan!
 
 ### 2023-03-01
-* prepared v8.1 release
+* prepared v8.2 release
 
 ### 2023-02-28
 * Catalan translation update, thanks, Joan!

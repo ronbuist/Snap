@@ -94,7 +94,7 @@ embedMetadataPNG, SnapExtensions, SnapSerializer*/
 
 /*jshint esversion: 11*/
 
-modules.objects = '2023-February-27';
+modules.objects = '2023-March-17';
 
 var SpriteMorph;
 var StageMorph;
@@ -2075,7 +2075,6 @@ SpriteMorph.prototype.init = function (globals) {
 
     SpriteMorph.uber.init.call(this);
 
-    this.isCachingImage = true;
     this.isFreeForm = true;
     this.cachedColorDimensions = this.color[this.penColorModel]();
     this.isDraggable = true;
@@ -2320,6 +2319,14 @@ SpriteMorph.prototype.fixLayout = function () {
     }
 };
 
+SpriteMorph.prototype.fullDrawOn = function (aContext, aRect) {
+    if (!this.isVisible) {return; }
+    this.isCachingImage = SpriteMorph.prototype.isCachingImage ||
+        this.graphicsChanged();
+    this.drawOn(aContext, aRect);
+    this.children.forEach(child => child.fullDrawOn(aContext, aRect));
+};
+
 SpriteMorph.prototype.render = function (ctx) {
     var myself = this,
         facing, // actual costume heading based on my rotation style
@@ -2368,7 +2375,7 @@ SpriteMorph.prototype.render = function (ctx) {
         }
     }
     // apply graphics effects to image
-    this.cachedImage = this.applyGraphicsEffects(this.cachedImage);
+    this.applyGraphicsEffects(this.cachedImage);
     this.version = Date.now();
 };
 
@@ -3572,24 +3579,31 @@ SpriteMorph.prototype.blocksMatching = function (
             ),
             slots = words.filter(each =>
                 each.length > 1 && each.indexOf('%') === 0
-            ).map(spec => menuOf(spec));
+            ).map(spec => moreTextIn(spec));
         return filtered.join(' ') + ' ' + slots.join(' ');
     }
 
-    function menuOf(aSlotSpec) {
+    function moreTextIn(aSlotSpec) {
         var info = BlockMorph.prototype.labelParts[aSlotSpec] || {},
-            menu = info.menu;
-        if (!menu) {return ''; }
-        if (isString(menu)) {
-            menu = InputSlotMorph.prototype[menu](true);
-        }
-        return Object.values(menu).map(entry => {
-            if (isNil(entry)) {return ''; }
-            if (entry instanceof Array) {
-                return localize(entry[0]);
+            menu = info.menu,
+            more;
+        if (menu) {
+            if (isString(menu)) {
+                menu = InputSlotMorph.prototype[menu](true);
             }
-            return entry.toString();
-        }).join(' ');
+            more = Object.values(menu).map(entry => {
+                if (isNil(entry)) {return ''; }
+                if (entry instanceof Array) {
+                    return localize(entry[0]);
+                }
+                return entry.toString();
+            }).join(' ');
+        }
+        return [
+            more || '',
+            localize(info.infix || ''),
+            localize(info.collapse || '')
+        ].join(' ');
     }
 
     function fillDigits(anInt, totalDigits, fillChar) {
@@ -3642,8 +3656,11 @@ SpriteMorph.prototype.blocksMatching = function (
         if (!StageMorph.prototype.hiddenPrimitives[selector] &&
                 contains(types, blocksDict[selector].type)) {
             var block = blocksDict[selector],
-                spec = localize(block.alias || block.spec),
+                spec = localize(block.spec),
                 rel = relevance(labelOf(spec), search);
+            if (rel === -1 && block.alias) {
+                rel = relevance(block.alias, search);
+            }
             if (
                 (rel !== -1) &&
                     (!block.dev) &&
@@ -4359,6 +4376,14 @@ SpriteMorph.prototype.doPlaySound = function (name) {
         }
         this.setVolume(this.getVolume()); // probably redundant as well
         aud.play();
+
+        aud.onended = function() {
+            this.currentSrc = null;
+            this.src = "";
+            this.srcObject = null;
+            this.remove();
+        };
+
         if (stage) {
             stage.activeSounds.push(aud);
             stage.activeSounds = stage.activeSounds.filter(snd =>
@@ -8632,7 +8657,7 @@ StageMorph.prototype.render = function (ctx) {
             (this.width() / this.scale - this.costume.width()) / 2,
             (this.height() / this.scale - this.costume.height()) / 2
         );
-        this.cachedImage = this.applyGraphicsEffects(this.cachedImage);
+        this.applyGraphicsEffects(this.cachedImage);
     }
     ctx.restore();
     this.version = Date.now(); // for observer optimization
@@ -10139,6 +10164,7 @@ StageMorph.prototype.allPaletteBlocks
     = SpriteMorph.prototype.allPaletteBlocks;
 
 StageMorph.prototype.isHidingBlock = SpriteMorph.prototype.isHidingBlock;
+StageMorph.prototype.isDisablingBlock = SpriteMorph.prototype.isDisablingBlock;
 
 StageMorph.prototype.changeBlockVisibility
     = SpriteMorph.prototype.changeBlockVisibility;

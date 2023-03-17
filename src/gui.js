@@ -86,11 +86,11 @@ BlockVisibilityDialogMorph, ThreadManager, isString, SnapExtensions*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.gui = '2023-March-01';
+modules.gui = '2023-March-17';
 
 // Declarations
 
-var SnapVersion = '8.2.0';
+var SnapVersion = '8.2.4-dev';
 
 var IDE_Morph;
 var ProjectDialogMorph;
@@ -4329,6 +4329,15 @@ IDE_Morph.prototype.settingsMenu = function () {
         'check to enable\ncamera support',
         true
     );
+    addPreference(
+        'Dynamic sprite rendering',
+        () => SpriteMorph.prototype.isCachingImage =
+            !SpriteMorph.prototype.isCachingImage,
+        !SpriteMorph.prototype.isCachingImage,
+        'uncheck to render\nsprites dynamically',
+        'check to cache\nsprite renderings',
+        true
+    );
     menu.addLine(); // everything visible below is persistent
     addPreference(
         'Blurred shadows',
@@ -6460,7 +6469,9 @@ IDE_Morph.prototype.switchToScene = function (
     if (!scene || !scene.stage) {
         return;
     }
-    this.siblings().forEach(
+    this.siblings().filter(
+        morph => !morph.nag
+    ).forEach(
         morph => morph.destroy()
     );
     this.scene.captureGlobalSettings();
@@ -8019,7 +8030,7 @@ IDE_Morph.prototype.showMessage = function (message, secs) {
 };
 
 IDE_Morph.prototype.inform = function (title, message) {
-    new DialogBoxMorph().inform(
+    return new DialogBoxMorph().inform(
         title,
         localize(message),
         this.world()
@@ -8071,6 +8082,7 @@ IDE_Morph.prototype.warnAboutIE = function () {
         dlg.addBody(txt);
         dlg.fixLayout();
         dlg.popUp(this.world());
+        dlg.nag = true;
     }
 };
 
@@ -8094,7 +8106,7 @@ IDE_Morph.prototype.warnAboutDev = function () {
             'even future official versions!\n\n' +
             'visit https://snap.berkeley.edu/run\n' +
             'for the official Snap! installation.'
-    );
+    ).nag = true;
 };
 
 // ProjectDialogMorph ////////////////////////////////////////////////////
