@@ -65,7 +65,7 @@ StagePickerMorph, CustomBlockDefinition*/
 
 /*jshint esversion: 11, bitwise: false, evil: true*/
 
-modules.threads = '2023-March-16';
+modules.threads = '2023-March-31';
 
 var ThreadManager;
 var Process;
@@ -1385,6 +1385,7 @@ Process.prototype.evaluate = function (
 
     var outer = new Context(null, null, context.outerContext),
         caller = this.context.parentContext,
+        cont = this.context.rawContinuation(!isCommand),
         exit,
         runnable,
         expr,
@@ -1409,14 +1410,20 @@ Process.prototype.evaluate = function (
         this.readyToYield = (this.currentTime - this.lastYield > this.timeout);
     }
 
+    // assign a self-reference for introspection and recursion
+    outer.variables.addVar(Symbol.for('self'), context);
+
+    // capture the dynamic scope in "this caller"
+    outer.variables.addVar(Symbol.for('caller'), this.context);
+
+    // capture the current continuation
+    outer.variables.addVar(Symbol.for('continuation'), cont);
+
     // assign arguments to parameters
 
     // assign the actual arguments list to the special
     // parameter ID Symbol.for('arguments'), to be used for variadic inputs
     outer.variables.addVar(Symbol.for('arguments'), args);
-
-    // assign a self-reference for introspection and recursion
-    outer.variables.addVar(Symbol.for('self'), context);
 
     // assign arguments that are actually passed
     if (parms.length > 0) {
@@ -1572,19 +1579,71 @@ Process.prototype.initializeFor = function (context, args) {
 
 // Process introspection
 
-Process.prototype.reportThisContext = function () {
+Process.prototype.reportEnvironment = function (choice, trgt = this.context) {
+    switch (this.inputOption(choice)) {
+    case 'caller':
+        return this.reportCaller(trgt);
+    case 'continuation':
+        return this.reportContinuation(trgt);
+    case 'inputs':
+        return this.reportInputs(trgt);
+    default:
+        return this.reportSelf(trgt);
+    }
+};
+
+Process.prototype.reportSelf = function (trgt) {
     var sym = Symbol.for('self'),
-        frame = this.context.variables.silentFind(sym),
+        frame = trgt.variables.silentFind(sym),
         ctx;
     if (frame) {
-        return frame.vars[sym].value;
+        ctx = copy(frame.vars[sym].value);
+    } else {
+        ctx = this.topBlock.reify();
     }
-    ctx = this.topBlock.reify();
-    ctx.outerContext = this.context.outerContext;
+    ctx.outerContext = trgt.outerContext;
     if (ctx.outerContext) {
         ctx.variables.parentFrame = ctx.outerContext.variables;
     }
     return ctx;
+};
+
+Process.prototype.reportCaller = function (trgt) {
+    var sym = Symbol.for('caller'),
+        frame = trgt.variables.silentFind(sym),
+        ctx;
+    if (frame) {
+        ctx = copy(frame.vars[sym].value);
+        ctx.expression = ctx.expression?.topBlock().fullCopy();
+        ctx.inputs = [];
+        return ctx;
+    }
+    return this.blockReceiver();
+};
+
+Process.prototype.reportContinuation = function (trgt) {
+    var sym = Symbol.for('continuation'),
+        frame = trgt.variables.silentFind(sym),
+        cont;
+    if (frame) {
+        cont = frame.vars[sym].value;
+        cont = cont.copyForContinuation();
+        cont.tag = null;
+        cont.isContinuation = true;
+    } else {
+        cont = new Context(
+            null,
+            'popContext'
+        );
+        cont.isContinuation = true;
+    }
+    return cont;
+};
+
+Process.prototype.reportInputs = function (trgt) {
+    var sym = Symbol.for('arguments'),
+        frame = trgt.variables.silentFind(sym);
+    return frame ? frame.vars[sym].value : new List();
 };
 
 // Process stopping blocks primitives
@@ -1661,14 +1720,14 @@ Process.prototype.evaluateCustomBlock = function () {
                 : this.blockReceiver().getMethod(block.semanticSpec),
         context = method.body,
         declarations = method.declarations,
+        cont = this.context.rawContinuation(method.type !== 'command'),
         args = new List(this.context.inputs),
         parms = args.itemsArray(),
         runnable,
         exit,
         i,
         value,
-        outer,
-        self;
+        outer;
 
     if (!context) {return null; }
     this.procedureCount += 1;
@@ -1698,10 +1757,6 @@ Process.prototype.evaluateCustomBlock = function () {
     );
     runnable.isCustomBlock = true;
     this.context.parentContext = runnable;
-
-    // capture the runtime environment in "this script"
-    self = copy(context);
-    self.outerContext = outer;
 
     // passing parameters if any were passed
     if (parms.length > 0) {
@@ -1761,7 +1816,12 @@ Process.prototype.evaluateCustomBlock = function () {
             this.readyToYield = true;
         }
     }
-    outer.variables.addVar(Symbol.for('self'), self);
+
+    // keep track of the environment for recursion and introspection
+    outer.variables.addVar(Symbol.for('self'), context);
+    outer.variables.addVar(Symbol.for('caller'), this.context);
+    outer.variables.addVar(Symbol.for('continuation'), cont);
+
     runnable.expression = runnable.expression.blockSequence();
 };
 
@@ -2170,6 +2230,12 @@ Process.prototype.reportListAttribute = function (choice, list) {
     case 'distribution':
         this.assertType(list, 'list');
         return list.distribution();
+    case 'sorted':
+        this.assertType(list, 'list');
+        return this.reportSorted(list);
+    case 'shuffled':
+        this.assertType(list, 'list');
+        return this.reportShuffled(list);
     case 'reverse':
         this.assertType(list, 'list');
         return list.reversed();
@@ -2226,6 +2292,86 @@ Process.prototype.doShowTable = function (list) {
     // experimental
     this.assertType(list, 'list');
     new TableDialogMorph(list).popUp(this.blockReceiver().world());
+};
+
+// process - sorting and shuffling a list (general utility)
+
+Process.prototype.reportSorted = function (data) {
+    return new List(data.itemsArray().slice().sort((a, b) =>
+        this.reportIsBefore(a, b) ? - 1 : 1
+    ));
+};
+
+Process.prototype.reportIsBefore = function (a, b) {
+    // private - this is an elaborate version of reportBasicLessThan()
+    // that is similar to snapEquals in that it will work with heterogeneous
+    // data types but is too slow for everyday use. Therefore it is currently
+    // only used for the generalized sorting of arbitrary data (lists)
+    // and not exposed as the (better) semantics behind "<"
+    var order = [
+            'list',
+            'text',
+            'number',
+            'Boolean',
+            'command',
+            'reporter',
+            'predicate',
+            'costume',
+            'sound',
+            'sprite',
+            'stage',
+            'nothing',
+            'undefined'
+        ],
+        typeA = this.reportTypeOf(a),
+        typeB = this.reportTypeOf(b),
+        lenA, lenB;
+
+    if (typeA !== typeB) {
+        return order.indexOf(typeA) < order.indexOf(typeB);
+    }
+    switch (typeA) {
+    case 'list':
+        // primary: length of list descending (!)
+        // secondary: contents of columns from left to right
+        // recursive, hope this doesn't crash on large tables
+        lenA = a.length();
+        lenB = b.length();
+        return lenA > lenB || (
+            lenA === lenB && (
+                !lenA ||
+                this.reportIsBefore(a.at(1), b.at(1)) ||
+                    (snapEquals(a.at(1), b.at(1)) &&
+                    this.reportIsBefore(a.cdr(), b.cdr()))
+            )
+        );
+    case 'command':
+    case 'reporter':
+    case 'predicate':
+        return a.expression.abstractBlockSpec() <
+            b.expression.abstractBlockSpec();
+    case 'costume':
+    case 'sound':
+    case 'sprite':
+    case 'stage':
+        return a.name < b.name;
+    default:
+        // number, Boolean, text or other
+        return this.reportBasicLessThan(a, b);
+    }
+};
+
+Process.prototype.reportShuffled = function (data) {
+    // Fisher-Yates algorithm
+    var array = [...data.itemsArray()],
+        i, k, tmp;
+    for (i = array.length - 1; i > 0; i -= 1) {
+        k = Math.floor(Math.random() * (i + 1));
+        tmp = array[i];
+        array[i] = array[k];
+        array[k] = tmp;
+    }
+    return new List(array);
 };
 
 // Process non-HOF list primitives
@@ -5863,6 +6009,13 @@ Process.prototype.reportBasicAttributeOf = function (attribute, name) {
         stage;
 
     if (name instanceof Context && attribute instanceof Context) {
+        if (attribute?.expression.selector === 'reportEnvironment') {
+            this.returnValueToParentContext(this.reportEnvironment(
+                attribute.expression.inputs()[0].evaluate(),
+                name
+            ));
+            return;
+        }
         return this.reportContextFor(attribute, name);
     }
     if (thisObj) {
@@ -7504,7 +7657,7 @@ Process.prototype.doDefineBlock = function (upvar, label, context) {
     this.assertType(context, ['command', 'reporter', 'predicate']);
 
     // replace upvar self references inside the definition body
-    // with "reportThisContext" reporters
+    // with "reportEnvironment" reporters
     if (context.expression instanceof BlockMorph) {
         this.compileBlockReferences(context, upvar);
     }
@@ -7567,8 +7720,8 @@ Process.prototype.doDefineBlock = function (upvar, label, context) {
 
 Process.prototype.compileBlockReferences = function (context, varName) {
     // private - replace self references inside the definition body
-    // with "reportThisContext" reporters
-    var report, declare, assign;
+    // with "this script" reporters
+    var report, declare, assign, self;
 
     function block(selector) {
         return SpriteMorph.prototype.blockForSelector(selector);
@@ -7588,14 +7741,13 @@ Process.prototype.compileBlockReferences = function (context, varName) {
         }
         // add a script var to capture the outer definition
         // don't replace any references, because they now should just work
+        self = block('reportEnvironment');
+        self.inputs()[0].setContents(['script']);
         declare = block('doDeclareVariables');
         declare.inputs()[0].setContents([varName]);
         assign = block('doSetVar');
         assign.inputs()[0].setContents(varName);
-        assign.replaceInput(
-            assign.inputs()[1],
-            block('reportThisContext')
-        );
+        assign.replaceInput(assign.inputs()[1], self);
         declare.nextBlock(assign);
         assign.nextBlock(context.expression.fullCopy());
         context.expression = declare;
@@ -7608,7 +7760,8 @@ Process.prototype.compileBlockReferences = function (context, varName) {
             if (morph.selector === 'reportGetVar' &&
                 (morph.blockSpec === varName))
             {
-                ref = block('reportThisContext');
+                ref = block('reportEnvironment');
+                ref.inputs()[0].setContents(['script']);
                 if (morph.parent instanceof SyntaxElementMorph) {
                     morph.parent.replaceInput(morph, ref);
                 } else {
@@ -8167,7 +8320,24 @@ Context.prototype.toBlock = function () {
 
 // Context continuations:
 
+Context.prototype.rawContinuation = function (isReporter) {
+    var cont;
+    if (this.expression instanceof Array) {
+        return this;
+    }
+    if (this.parentContext) {
+        return this.parentContext;
+    }
+    cont = new Context(
+        null,
+        isReporter ? 'expectReport' : 'popContext'
+    );
+    cont.isContinuation = true;
+    return cont;
+};
+
 Context.prototype.continuation = function (isReporter) {
+    // retained for legacy compatibility for deprecated run/cc and call/cc
     var cont;
     if (this.expression instanceof Array) {
         cont = this;
@@ -8823,7 +8993,7 @@ JSCompiler.prototype.compileExpression = function (block) {
     case 'reportBoolean':
     case 'reportNewList':
         return this.compileInput(inputs[0]);
-    case 'reportThisContext':
+    case 'reportEnvironment':
         return 'func';
     default:
         target = this.process[selector] ? this.process

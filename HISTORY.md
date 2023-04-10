@@ -2,13 +2,68 @@
 
 ## in development:
 * **New Features:**
+    * new "current" reporter for introspection offering access to "script", "caller", "continuation" and "inputs", enabling programs to access their dynamic scope and runtime call-stack
+    * new "sorted" and "shuffled" selectors in list properties reporter's dropdown
+    * new "Sarron" costume series, thanks, Meghan and Brian!
 * **Notable Changes:**
+    * "this script" reporter has been morphed into the new general "current" introspection/self reflection reporter 
+    * RUN/CC and CALL/CC primitives have been deprecated and removed from the palette, will still be present and work in existing projects
     * improved browser resource management for graphics and sounds
     * updated audio comp library with a faster (hyper) version of the "Hz for secs" reporter
     * new "fade-in" block in the audio comp library that lets you reduce audible "clicks" in sounds computed from raw samples
+    * slightly optimized pen drawing performance when WARPed
 * **Notable Fixes:**
+    * fixed #3154 (let "this script" capture variables in rings)
+    * catch misspelled or non-existing translation keys in urls and elsewhere, thanks, Joan!
+    * fixed a bug that led to the default input of "When I am clicked" not being translated
+    * fixed serializing complex inputs to contexts (procedure objects)
+    * fixed #3207 (initial arrow head orientation for long form input slot dialog)
 * **Documentation Updates:**
 * **Translation Updates:**
+    * German
+    * Greek, thanks, HM100!
+
+### 2023-04-06
+* Greek translation update, thanks, HM100!
+* byob: fixed #3207
+
+### 2023-03-31
+* store: fixed serializing complex inputs to contexts (procedure objects)
+
+### 2023-03-28
+* objects: fixed a bug that led to the default input of "When I am clicked" not being translated
+
+### 2023-03-27
+* gui, objects, store: incremented dev version to v9
+* new Sarron sprite character costume series, thanks, Meghan and Brian!
+* gui: catch misspelled translation keys in urls, thanks, Joan!
+* German translation update
+* gui: updated credits to Meghan for Sarron costumes
+
+### 2023-03-26
+* threads: tweaked (attribute OF object) primitive to let scripts access their dynamic scope and runtime call-stack
+
+### 2023-03-24
+* objects: made deprecated CALLCC and RUN/CC available in the palette in dev for debugging + testing for compatibility
+
+### 2023-03-23
+* blocks, threads: added 'sorted' selector to list properties dropdown
+* objects: slightly optimized pen drawing performance when WARPed
+* blocks, threads: added 'shuffled' selector to list properties dropdown
+
+### 2023-03-22
+* blocks, threads: optimized and simplified continuations
+* blocks, threads: added "inputs" selector to "this" reporter dropdown
+* objects: removed RUN/CC and CALL/CC from the blocks palette
+
+### 2023-03-21
+* threads: optimized and simplified "this caller" infrastructure
+
+### 2023-03-20
+* threads: fixed #3154 (let "this script" capture variables in rings)
+* objects, threads: capture the dynamic scope in "this caller" (temporary & experimental)
+* blocks, objects, threads: collapsed "this script" and "this caller" into new "this (environment)" reporter
+* gui, store: pushed dev version to 8.3 
 
 ### 2023-03-17
 * objects, guj: added "dynamic sprites rendering" hidden option setting for debugging purposes

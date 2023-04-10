@@ -86,11 +86,11 @@ BlockVisibilityDialogMorph, ThreadManager, isString, SnapExtensions*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.gui = '2023-March-17';
+modules.gui = '2023-March-27';
 
 // Declarations
 
-var SnapVersion = '8.2.4-dev';
+var SnapVersion = '9.0.0-dev';
 
 var IDE_Morph;
 var ProjectDialogMorph;
@@ -5239,9 +5239,9 @@ IDE_Morph.prototype.aboutSnap = function () {
         + '\nAchal Dave: Web Audio'
         + '\nJoe Otto: Morphic Testing and Debugging'
         + '\n\n'
-        + 'Jahrd, Derec, and Jamet costumes are watercolor paintings'
-        + '\nby Meghan Taylor and represent characters from her'
-        + '\nwebcomic Prophecy of the Circle, licensed to us only'
+        + 'Jahrd, Derec, Jamet and Sarron costumes are watercolor'
+        + '\npaintings by Meghan Taylor and represent characters from'
+        + '\nher webcomic Prophecy of the Circle, licensed to us only'
         + '\nfor use in Snap! projects. Meghan also painted the Tad'
         + '\ncostumes, but that character is in the public domain.';
 
@@ -7136,14 +7136,23 @@ IDE_Morph.prototype.languageMenu = function () {
 
 IDE_Morph.prototype.setLanguage = function (lang, callback, noSave) {
     var translation = document.getElementById('language'),
-        src = this.resourceURL('locale', 'lang-' + lang + '.js');
+        src;
     SnapTranslator.unload();
     if (translation) {
         document.head.removeChild(translation);
     }
+    if (!(lang in SnapTranslator.dict)) {
+        if (lang.includes('_') && lang.split('_')[0] in SnapTranslator.dict) {
+            lang = lang.split('_')[0];
+        } else {
+            lang = 'en';
+        }
+    }
     if (lang === 'en') {
         return this.reflectLanguage('en', callback, noSave);
     }
+
+    src = this.resourceURL('locale', 'lang-' + lang + '.js');
     translation = document.createElement('script');
     translation.id = 'language';
     translation.onload = () =>

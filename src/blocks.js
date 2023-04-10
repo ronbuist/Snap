@@ -161,7 +161,7 @@ SVG_Costume, embedMetadataPNG, ThreadManager*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2023-March-13';
+modules.blocks = '2023-March-23';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -494,6 +494,8 @@ SyntaxElementMorph.prototype.labelParts = {
             'columns' : ['columns'],
             // 'transpose' : ['transpose'],
             'distribution' : ['distribution'],
+            'sorted' : ['sorted'],
+            'shuffled' : ['shuffled'],
             'reverse' : ['reverse'],
             '~' : null,
             'lines' : ['lines'],
@@ -593,6 +595,17 @@ SyntaxElementMorph.prototype.labelParts = {
             // duplicate: ['duplicate'],
             // comic: ['comic'],
             // confetti: ['confetti']
+        }
+    },
+    '%env': {
+        type: 'input',
+        tags: 'read-only static',
+        menu: {
+            script: ['script'],
+            caller: ['caller'],
+            continuation: ['continuation'],
+            '~' : null,
+            inputs : ['inputs']
         }
     },
     '%snd': {

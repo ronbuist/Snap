@@ -94,7 +94,7 @@ embedMetadataPNG, SnapExtensions, SnapSerializer*/
 
 /*jshint esversion: 11*/
 
-modules.objects = '2023-March-17';
+modules.objects = '2023-March-28';
 
 var SpriteMorph;
 var StageMorph;
@@ -759,7 +759,7 @@ SpriteMorph.prototype.initBlocks = function () {
             type: 'hat',
             category: 'control',
             spec: 'when I am %interaction',
-            defaults: ['clicked']
+            defaults: [['clicked']]
         },
         receiveMessage: {
             type: 'hat',
@@ -863,11 +863,15 @@ SpriteMorph.prototype.initBlocks = function () {
             spec: 'report %s'
         },
         doCallCC: {
+            // deprecated - superseded by reportEnviornment - kept for legacy
+            dev: true,
             type: 'command',
             category: 'control',
             spec: 'run %cmdRing w/continuation'
         },
         reportCallCC: {
+            // deprecated - superseded by reportEnviornment - kept for legacy
+            dev: true,
             type: 'reporter',
             category: 'control',
             spec: 'call %cmdRing w/continuation'
@@ -947,10 +951,11 @@ SpriteMorph.prototype.initBlocks = function () {
             spec: '%block of block %repRing',
             defaults: [['definition']]
         },
-        reportThisContext: {
+        reportEnvironment: {
             type: 'reporter',
             category: 'control',
-            spec: 'this script'
+            spec: 'current %env',
+            defaults: [['script']]
         },
 
         // Debugging - pausing
@@ -1798,12 +1803,17 @@ SpriteMorph.prototype.initBlockMigrations = function () {
         reportIsIdentical: {
             selector: 'reportVariadicIsIdentical',
             variadic: true
+        },
+        reportThisContext: {
+            selector: 'reportEnvironment',
+            inputs: [['script']]
         }
     };
 };
 
 SpriteMorph.prototype.newPrimitivesSince = function (version) {
     var selectors = ['reportJSFunction'];
+    // 9: no new primitives
     // 8.2: no new primitives
     if (version < 8.1) {
         selectors.push(
@@ -1819,7 +1829,7 @@ SpriteMorph.prototype.newPrimitivesSince = function (version) {
             'doSetBlockAttribute',
             'doDeleteBlock',
             'reportBlockAttribute',
-            'reportThisContext'
+            'reportEnvironment'
         );
     }
     return selectors;
@@ -2752,9 +2762,6 @@ SpriteMorph.prototype.blockTemplates = function (
         blocks.push(block('doTellTo'));
         blocks.push(block('reportAskFor'));
         blocks.push('-');
-        blocks.push(block('doCallCC'));
-        blocks.push(block('reportCallCC'));
-        blocks.push('-');
         blocks.push(block('receiveOnClone'));
         blocks.push(block('createClone'));
         blocks.push(block('newClone'));
@@ -2768,7 +2775,7 @@ SpriteMorph.prototype.blockTemplates = function (
         blocks.push(block('doDeleteBlock'));
         blocks.push(block('doSetBlockAttribute'));
         blocks.push(block('reportBlockAttribute'));
-        blocks.push(block('reportThisContext'));
+        blocks.push(block('reportEnvironment'));
 
         // for debugging: ///////////////
         if (devMode) {
@@ -2777,6 +2784,10 @@ SpriteMorph.prototype.blockTemplates = function (
             blocks.push('-');
             blocks.push(watcherToggle('getLastMessage'));
             blocks.push(block('getLastMessage'));
+        // deprecated - superseded by reportEnviornment - retained for legacy
+            blocks.push('-');
+            blocks.push(block('doCallCC'));
+            blocks.push(block('reportCallCC'));
         }
 
     } else if (category === 'sensing') {
@@ -6204,11 +6215,9 @@ SpriteMorph.prototype.drawLine = function (start, dest) {
         context = this.parent.penTrails().getContext('2d'),
         from = start.subtract(stagePos).divideBy(stageScale),
         to = dest.subtract(stagePos).divideBy(stageScale),
-        damagedFrom = from.multiplyBy(stageScale).add(stagePos),
-        damagedTo = to.multiplyBy(stageScale).add(stagePos),
-        damaged = damagedFrom.rectangle(damagedTo).expandBy(
-            Math.max(this.size * stageScale / 2, 1)
-        ).intersect(this.parent.visibleBounds()).spread();
+        damagedFrom,
+        damagedTo,
+        damaged;
 
     if (this.isDown) {
         // record for later svg conversion
@@ -6239,6 +6248,11 @@ SpriteMorph.prototype.drawLine = function (start, dest) {
         context.lineTo(to.x, to.y);
         context.stroke();
         if (this.isWarped === false) {
+            damagedFrom = from.multiplyBy(stageScale).add(stagePos);
+            damagedTo = to.multiplyBy(stageScale).add(stagePos);
+            damaged = damagedFrom.rectangle(damagedTo).expandBy(
+                Math.max(this.size * stageScale / 2, 1)
+            ).intersect(this.parent.visibleBounds()).spread();
             this.world().broken.push(damaged);
         }
         this.parent.cachedPenTrailsMorph = null;
@@ -9613,9 +9627,6 @@ StageMorph.prototype.blockTemplates = function (
         blocks.push(block('doTellTo'));
         blocks.push(block('reportAskFor'));
         blocks.push('-');
-        blocks.push(block('doCallCC'));
-        blocks.push(block('reportCallCC'));
-        blocks.push('-');
         blocks.push(block('createClone'));
         blocks.push(block('newClone'));
         blocks.push('-');
@@ -9627,7 +9638,7 @@ StageMorph.prototype.blockTemplates = function (
         blocks.push(block('doDeleteBlock'));
         blocks.push(block('doSetBlockAttribute'));
         blocks.push(block('reportBlockAttribute'));
-        blocks.push(block('reportThisContext'));
+        blocks.push(block('reportEnvironment'));
 
         // for debugging: ///////////////
         if (this.world().isDevMode) {
@@ -9636,6 +9647,10 @@ StageMorph.prototype.blockTemplates = function (
             blocks.push('-');
             blocks.push(watcherToggle('getLastMessage'));
             blocks.push(block('getLastMessage'));
+        // deprecated - superseded by reportEnviornment - retained for legacy
+            blocks.push('-');
+            blocks.push(block('doCallCC'));
+            blocks.push(block('reportCallCC'));
         }
 
     } else if (category === 'sensing') {

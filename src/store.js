@@ -63,7 +63,7 @@ Project*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.store = '2023-March-05';
+modules.store = '2023-March-31';
 
 // XML_Serializer ///////////////////////////////////////////////////////
 /*
@@ -259,7 +259,7 @@ SnapSerializer.uber = XML_Serializer.prototype;
 
 // SnapSerializer constants:
 
-SnapSerializer.prototype.app = 'Snap! 8.2, https://snap.berkeley.edu';
+SnapSerializer.prototype.app = 'Snap! 9.0, https://snap.berkeley.edu';
 
 SnapSerializer.prototype.thumbnailSize = new Point(160, 120);
 
@@ -2493,9 +2493,11 @@ Context.prototype.toXML = function (serializer) {
         '<context ~><inputs>%</inputs><variables>%</variables>' +
             '%<receiver>%</receiver><origin>%</origin>%</context>',
         this.inputs.reduce(
-                (xml, input) => {
-                    return xml + serializer.format('<input>$</input>', input);
-                },
+                (xml, input) => xml + input.toXML ?
+                    serializer.format(
+                        '<input>%</input>',
+                        input.toXML(serializer)
+                    ) : serializer.format('<input>$</input>', input),
                 ''
             ),
         this.variables ? serializer.store(this.variables) : '',
