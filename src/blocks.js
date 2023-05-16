@@ -155,13 +155,13 @@ DialogBoxMorph, BlockInputFragmentMorph, PrototypeHatBlockMorph, WHITE, BLACK,
 Costume, IDE_Morph, BlockDialogMorph, BlockEditorMorph, localize, CLEAR, Point,
 isSnapObject, PushButtonMorph, SpriteIconMorph, Process, AlignmentMorph, List,
 ToggleButtonMorph, DialMorph, SnapExtensions, CostumeIconMorph, SoundIconMorph,
-SVG_Costume, embedMetadataPNG, ThreadManager*/
+SVG_Costume, embedMetadataPNG, ThreadManager, snapEquals*/
 
 /*jshint esversion: 11*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2023-March-23';
+modules.blocks = '2023-May-08';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -503,6 +503,15 @@ SyntaxElementMorph.prototype.labelParts = {
             'json' : ['json']
         }
     },
+    '%ta': {
+        type: 'input',
+        tags: 'read-only static',
+        menu: {
+            'length' : ['length'],
+            'lower case' : ['lower case'],
+            'upper case' : ['upper case']
+        }
+    },
     '%mlfunc': {
         type: 'input',
         tags: 'read-only static',
@@ -746,6 +755,7 @@ SyntaxElementMorph.prototype.labelParts = {
         tags: 'read-only static',
         menu: {
             'turbo mode' : ['turbo mode'],
+            'case sensitivity' : ['case sensitivity'],
             'flat line ends' : ['flat line ends'],
             'log pen vectors' : ['log pen vectors'],
             'video capture' : ['video capture'],
@@ -3075,6 +3085,40 @@ BlockMorph.prototype.abstractBlockSpec = function () {
     return this.parseSpec(this.blockSpec).map(str =>
         (str.length > 1 && (str[0]) === '%') ? '_' : str
     ).join(' ');
+};
+
+BlockMorph.prototype.localizeBlockSpec = function (spec) {
+    // answer the translated block spec where the translation itself
+    // is in the form of an abstract spec, i.e. with padded underscores
+    // in place for percent-sign prefixed slot specs.
+    // Under construction, currently not (yet) in use.
+    var slotSpecs = [],
+        slotCount = -1,
+        abstractSpec,
+        translation;
+
+    abstractSpec = this.parseSpec(spec).map(str => {
+        if (str.length > 1 && (str[0]) === '%') {
+            slotSpecs.push(str);
+            return '_';
+        }
+        return str;
+    }).join(' ');
+
+    // make sure to also remove any explicit slot specs from the translation
+    translation = this.parseSpec(localize(abstractSpec)).map(str =>
+        (str.length > 1 && (str[0]) === '%') ? '_' : str
+    ).join(' ');
+
+    // replace abstract slot placeholders in the translation with their
+    // concrete specs from the original block spec
+    return translation.split(' ').map(word => {
+        if (word === '_') {
+            slotCount += 1;
+            return slotSpecs[slotCount] || '';
+        }
+        return word;
+    }).join(' ');
 };
 
 // BlockMorph menu:
@@ -10788,7 +10832,11 @@ InputSlotMorph.prototype.messagesMenu = function (searching) {
 
     stage.children.concat(stage).forEach(morph => {
         if (isSnapObject(morph)) {
-            allNames = allNames.concat(morph.allMessageNames());
+            morph.allMessageNames().forEach(msg => {
+                if (!allNames.some(m => snapEquals(m, msg))) {
+                    allNames.push(msg);
+                }
+            });
         }
     });
     allNames.sort().forEach(name =>
@@ -10883,8 +10931,10 @@ InputSlotMorph.prototype.collidablesMenu = function (searching) {
 
     stage.children.forEach(morph => {
         if (morph instanceof SpriteMorph && !morph.isTemporary) {
-            if (morph.name !== rcvr.name) {
-                allNames = allNames.concat(morph.name);
+            if (morph.name !== rcvr.name &&
+                !allNames.some(n => snapEquals(n, morph.name))
+            ) {
+                allNames.push(morph.name);
             }
         }
     });
@@ -10914,8 +10964,10 @@ InputSlotMorph.prototype.locationMenu = function (searching) {
 
     stage.children.forEach(morph => {
         if (morph instanceof SpriteMorph && !morph.isTemporary) {
-            if (morph.name !== rcvr.name) {
-                allNames = allNames.concat(morph.name);
+            if (morph.name !== rcvr.name &&
+                !allNames.some(n => snapEquals(n, morph.name))
+            ) {
+                allNames.push(morph.name);
             }
         }
     });
@@ -10950,8 +11002,10 @@ InputSlotMorph.prototype.distancesMenu = function (searching) {
 
     stage.children.forEach(morph => {
         if (morph instanceof SpriteMorph && !morph.isTemporary) {
-            if (morph.name !== rcvr.name) {
-                allNames = allNames.concat(morph.name);
+            if (morph.name !== rcvr.name &&
+                !allNames.some(n => snapEquals(n, morph.name))
+            ) {
+                allNames.push(morph.name);
             }
         }
     });
@@ -10977,7 +11031,9 @@ InputSlotMorph.prototype.clonablesMenu = function (searching) {
     }
     stage.children.forEach(morph => {
         if (morph instanceof SpriteMorph && !morph.isTemporary) {
-            allNames = allNames.concat(morph.name);
+            if (!allNames.some(n => snapEquals(n, morph.name))) {
+                allNames.push(morph.name);
+            }
         }
     });
     if (allNames.length > 0) {
@@ -11008,7 +11064,9 @@ InputSlotMorph.prototype.objectsMenu = function (searching, includeMyself) {
     dict[stage.name] = stage.name;
     stage.children.forEach(morph => {
         if (morph instanceof SpriteMorph && !morph.isTemporary) {
-            allNames.push(morph.name);
+            if (!allNames.some(n => snapEquals(n, morph.name))) {
+                allNames.push(morph.name);
+            }
         }
     });
     if (allNames.length > 0) {
@@ -11032,7 +11090,9 @@ InputSlotMorph.prototype.receiversMenu = function (searching) {
     dict[stage.name] = stage.name;
     stage.children.forEach(morph => {
         if (morph instanceof SpriteMorph && !morph.isTemporary) {
-            dict[morph.name] = morph.name;
+            if (!Object.keys(dict).some(k => snapEquals(k, morph.name))) {
+                dict[morph.name] = morph.name;
+            }
         }
     });
     return dict;
@@ -11049,7 +11109,9 @@ InputSlotMorph.prototype.userEditMenu = function (searching) {
     dict['~'] = null;
     dict[stage.name] = stage.name;
     stage.children.forEach(morph => {
-        if (morph instanceof SpriteMorph && !morph.isTemporary) {
+        if (morph instanceof SpriteMorph && !morph.isTemporary &&
+            !Object.keys(dict).some(k => snapEquals(k, morph.name))
+        ) {
             dict[morph.name] = morph.name;
         }
     });
@@ -11065,12 +11127,19 @@ InputSlotMorph.prototype.typesMenu = function () {
     };
     if (SpriteMorph.prototype.enableFirstClass) {
         dict.sprite = ['sprite'];
+        dict.stage = ['stage'];
     }
     dict.costume = ['costume'];
     dict.sound = ['sound'];
     dict.command = ['command'];
     dict.reporter = ['reporter'];
     dict.predicate = ['predicate'];
+    dict['~'] = null;
+    // the following entries are collective types and thus not unique:
+    if (SpriteMorph.prototype.enableFirstClass) {
+        dict.agent = ['agent'];
+    }
+    dict.script = ['script'];
     return dict;
 };
 
@@ -11203,9 +11272,11 @@ InputSlotMorph.prototype.costumesMenu = function (searching) {
     if (block.selector !== 'doSwitchToCostume') {
         dict.current = ['current'];
     }
-    rcvr.costumes.asArray().forEach(costume =>
-        allNames = allNames.concat(costume.name)
-    );
+    rcvr.costumes.asArray().forEach(costume => {
+        if (!allNames.some(n => snapEquals(n, costume.name))) {
+            allNames.push(costume.name);
+        }
+    });
     if (allNames.length > 0) {
         dict['~'] = null;
         allNames.forEach(name =>
@@ -11222,9 +11293,11 @@ InputSlotMorph.prototype.soundsMenu = function (searching) {
         allNames = [],
         dict = {};
 
-    rcvr.sounds.asArray().forEach(sound =>
-        allNames = allNames.concat(sound.name)
-    );
+    rcvr.sounds.asArray().forEach(sound => {
+        if (!allNames.some(n => snapEquals(n, sound.name))) {
+            allNames.push(sound.name);
+        }
+    });
     if (allNames.length > 0) {
         allNames.sort().forEach(name =>
             dict[name] = name
@@ -13521,7 +13594,7 @@ MultiArgMorph.prototype.addInput = function (contents) {
 
     this.addInfix();
     idx = this.children.length - 1;
-    if (contents) {
+    if (!isNil(contents)) {
         newPart.setContents(contents);
     } else if (this.elementSpec === '%scriptVars' ||
             this.elementSpec === '%blockVars') {

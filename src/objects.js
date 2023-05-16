@@ -90,11 +90,11 @@ BlockEditorMorph, BlockDialogMorph, PrototypeHatBlockMorph,  BooleanSlotMorph,
 localize, TableMorph, TableFrameMorph, normalizeCanvas, VectorPaintEditorMorph,
 AlignmentMorph, Process, WorldMap, copyCanvas, useBlurredShadows, BLACK,
 BlockVisibilityDialogMorph, CostumeIconMorph, SoundIconMorph, MenuItemMorph,
-embedMetadataPNG, SnapExtensions, SnapSerializer*/
+embedMetadataPNG, SnapExtensions, SnapSerializer, snapEquals*/
 
 /*jshint esversion: 11*/
 
-modules.objects = '2023-March-28';
+modules.objects = '2023-May-08';
 
 var SpriteMorph;
 var StageMorph;
@@ -954,7 +954,7 @@ SpriteMorph.prototype.initBlocks = function () {
         reportEnvironment: {
             type: 'reporter',
             category: 'control',
-            spec: 'current %env',
+            spec: 'this %env',
             defaults: [['script']]
         },
 
@@ -1304,11 +1304,17 @@ SpriteMorph.prototype.initBlocks = function () {
             spec: 'letter %ix of %s',
             defaults: [1, localize('world')]
         },
-        reportStringSize: {
+        reportStringSize: { // deprecated as of v9
             type: 'reporter',
             category: 'operators',
             spec: 'length of %s',
             defaults: [localize('world')]
+        },
+        reportTextAttribute: {
+            type: 'reporter',
+            category: 'operators',
+            spec: '%ta of text %s',
+            defaults: [['length'], localize('world')]
         },
         reportUnicode: {
             type: 'reporter',
@@ -1511,7 +1517,7 @@ SpriteMorph.prototype.initBlocks = function () {
         reportReshape: {
             type: 'reporter',
             category: 'lists',
-            spec: 'reshape %l to %nums',
+            spec: 'reshape %s to %nums',
             defaults: [null, [4, 3]]
         },
     /*
@@ -1807,6 +1813,11 @@ SpriteMorph.prototype.initBlockMigrations = function () {
         reportThisContext: {
             selector: 'reportEnvironment',
             inputs: [['script']]
+        },
+        reportStringSize: {
+            selector: 'reportTextAttribute',
+            inputs: [['length']],
+            offset: 1
         }
     };
 };
@@ -2476,7 +2487,7 @@ SpriteMorph.prototype.blockForSelector = function (selector, setDefaults) {
     if (contains(['reifyReporter', 'reifyPredicate'], block.selector)) {
         block.isStatic = true;
     }
-    block.setSpec(localize(info.spec));
+    block.setSpec(block.localizeBlockSpec(info.spec));
     if (migration && migration.expand) {
         block.inputs()[migration.expand].addInput();
     }
@@ -2874,7 +2885,7 @@ SpriteMorph.prototype.blockTemplates = function (
         blocks.push(block('reportJoinWords'));
         blocks.push(block('reportTextSplit'));
         blocks.push(block('reportLetter'));
-        blocks.push(block('reportStringSize'));
+        blocks.push(block('reportTextAttribute'));
         blocks.push('-');
         blocks.push(block('reportUnicode'));
         blocks.push(block('reportUnicodeAsLetter'));
@@ -4198,7 +4209,7 @@ SpriteMorph.prototype.visibleScopeFor = function (varName, isGlobal) {
 
 SpriteMorph.prototype.addCostume = function (costume) {
     if (!costume.name) {
-        costume.name = 'costume' + (this.costumes.length() + 1);
+        costume.name = this.newCostumeName(localize('costume'));
     }
     this.shadowAttribute('costumes');
     this.costumes.add(costume);
@@ -4328,7 +4339,7 @@ SpriteMorph.prototype.doSwitchToCostume = function (id, noShadow) {
             this.doWearPreviousCostume();
             return;
         }
-        costume = detect(arr, cst => cst.name === id);
+        costume = detect(arr, cst => snapEquals(cst.name, id));
         if (costume === null) {
             num = parseFloat(id);
             if (num === 0) {
@@ -4348,7 +4359,7 @@ SpriteMorph.prototype.reportCostumes = function () {
 // SpriteMorph sound management
 
 SpriteMorph.prototype.addSound = function (audio, name) {
-    var sound = new Sound(audio, name);
+    var sound = new Sound(audio, this.newSoundName(name));
     this.shadowAttribute('sounds');
     this.sounds.add(sound);
     this.recordUserEdit(
@@ -4365,7 +4376,7 @@ SpriteMorph.prototype.doPlaySound = function (name) {
             : (typeof name === 'number' ? this.sounds.at(name)
                 : detect(
                     this.sounds.asArray(),
-                    s => s.name === name.toString()
+                    s => snapEquals(s.name, name.toString())
             )),
         ctx = this.audioContext(),
         gain =  this.getGainNode(),
@@ -4570,7 +4581,7 @@ SpriteMorph.prototype.userMenu = function () {
         allParts,
         anchors;
 
-    if (ide && ide.isAppMode) {
+    if (ide && (ide.isAppMode || ide.config.noSpriteEdits)) {
         // menu.addItem('help', 'nop');
         return menu;
     }
@@ -4648,7 +4659,7 @@ SpriteMorph.prototype.exportSprite = function () {
 
 SpriteMorph.prototype.edit = function () {
     var ide = this.parentThatIsA(IDE_Morph);
-    if (ide && !ide.isAppMode) {
+    if (ide && !ide.isAppMode && !ide.config.noSpriteEdits) {
         ide.selectSprite(this);
     }
 };
@@ -6821,7 +6832,7 @@ SpriteMorph.prototype.allMessageNames = function () {
             )) {
                 txt = morph.evaluate();
                 if (isString(txt) && txt !== '') {
-                    if (!contains(msgs, txt)) {
+                    if (!msgs.some(m => snapEquals(m, txt))) {
                         msgs.push(txt);
                     }
                 }
@@ -6847,8 +6858,8 @@ SpriteMorph.prototype.allHatBlocksFor = function (message) {
         if (sel) {
             if (sel === 'receiveMessage') {
                 event = morph.inputs()[0].evaluate();
-                return event === message ||
-                    (event instanceof Array && event[0] == message) || // nums
+                return snapEquals(event, message) ||
+                    (event instanceof Array && snapEquals(event[0], message)) ||
                     (event instanceof Array &&
                         event[0] === 'any message' &&
                         message !== '__shout__go__' &&
@@ -8351,8 +8362,9 @@ SpriteMorph.prototype.newCostumeName = function (name, ignoredCostume) {
         newName = stem,
         all = this.costumes.asArray().filter(each =>
             each !== ignoredCostume
-        ).map(each => each.name);
-    while (contains(all, newName)) {
+        ).map(each => each.name),
+        exist = e => snapEquals(e, newName);
+    while (all.some(exist)) {
         count += 1;
         newName = stem + '(' + count + ')';
     }
@@ -8386,8 +8398,9 @@ SpriteMorph.prototype.newSoundName = function (name, ignoredSound) {
         newName = stem,
         all = this.sounds.asArray().filter(each =>
             each !== ignoredSound
-        ).map(each => each.name);
-    while (contains(all, newName)) {
+        ).map(each => each.name),
+        exist = e => snapEquals(e, newName);
+    while (all.some(exist)) {
         count += 1;
         newName = stem + '(' + count + ')';
     }
@@ -8854,7 +8867,7 @@ StageMorph.prototype.stopVideo = function() {
     this.videoMotion = null;
 };
 
-StageMorph.prototype.stopProjection = function() {
+StageMorph.prototype.stopProjection = function () {
     if (this.projectionSource) {
         this.stopProjectionSource();
         this.projectionSource.remove();
@@ -8864,11 +8877,11 @@ StageMorph.prototype.stopProjection = function() {
     this.clearProjectionLayer();
 };
 
-StageMorph.prototype.projectionSnap = function() {
+StageMorph.prototype.projectionSnap = function (target) {
     var snap = newCanvas(this.dimensions, true),
         ctx = snap.getContext('2d');
     ctx.drawImage(this.projectionLayer(), 0, 0);
-    return new Costume(snap, this.newCostumeName(localize('snap')));
+    return new Costume(snap, (target || this).newCostumeName(localize('snap')));
 };
 
 // StageMorph pixel access:
@@ -9733,7 +9746,7 @@ StageMorph.prototype.blockTemplates = function (
         blocks.push(block('reportJoinWords'));
         blocks.push(block('reportTextSplit'));
         blocks.push(block('reportLetter'));
-        blocks.push(block('reportStringSize'));
+        blocks.push(block('reportTextAttribute'));
         blocks.push('-');
         blocks.push(block('reportUnicode'));
         blocks.push(block('reportUnicodeAsLetter'));
@@ -9858,7 +9871,7 @@ StageMorph.prototype.userMenu = function () {
     var ide = this.parentThatIsA(IDE_Morph),
         menu = new MenuMorph(this);
 
-    if (ide && ide.isAppMode) {
+    if (ide && (ide.isAppMode || ide.config.noSpriteEdits)) {
         // menu.addItem('help', 'nop');
         return menu;
     }

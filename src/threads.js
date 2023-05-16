@@ -65,7 +65,7 @@ StagePickerMorph, CustomBlockDefinition*/
 
 /*jshint esversion: 11, bitwise: false, evil: true*/
 
-modules.threads = '2023-March-31';
+modules.threads = '2023-May-07';
 
 var ThreadManager;
 var Process;
@@ -115,7 +115,9 @@ function snapEquals(a, b) {
 
     // handle text comparison case-insensitive.
     if (isString(x) && isString(y)) {
-        return x.toLowerCase() === y.toLowerCase();
+        if (Process.prototype.isCaseInsensitive) {
+            return x.toLowerCase() === y.toLowerCase();
+        }
     }
 
     return x === y;
@@ -599,6 +601,7 @@ Process.prototype = {};
 Process.prototype.constructor = Process;
 Process.prototype.timeout = 500; // msecs after which to force yield
 Process.prototype.isCatchingErrors = true;
+Process.prototype.isCaseInsensitive = true; // text comparison
 Process.prototype.enableHyperOps = true;
 Process.prototype.enableLiveCoding = false; // experimental
 Process.prototype.enableSingleStepping = false;
@@ -1379,6 +1382,9 @@ Process.prototype.evaluate = function (
     if (context.isContinuation) {
         return this.runContinuation(context, args);
     }
+    if (context instanceof List) {
+        return this.hyperEval(context, args);
+    }
     if (!(context instanceof Context)) {
         throw new Error('expecting a ring but getting ' + context);
     }
@@ -1489,6 +1495,25 @@ Process.prototype.evaluate = function (
             }
         }
     }
+};
+
+Process.prototype.hyperEval = function (context, args) {
+    // hyper-monadic deep-map
+    // note: currently only literal inputs are supported in hyper-calls
+    var mapBlock = SpriteMorph.prototype.blockForSelector('reportMap'),
+        callBlock = SpriteMorph.prototype.blockForSelector('evaluate'),
+        varBlock = SpriteMorph.prototype.variableBlock('fn'),
+        argsBlock = this.assertType(args, 'JSON').blockify(),
+        funArg;
+
+    callBlock.replaceInput(callBlock.inputs()[0], varBlock);
+    callBlock.replaceInput(callBlock.inputs()[1], argsBlock);
+    funArg = this.reify(callBlock, new List(['fn']));
+
+    this.popContext();
+    this.pushContext(mapBlock);
+    this.context.inputs = [funArg, context];
+    this.pushContext();
 };
 
 Process.prototype.fork = function (context, args) {
@@ -1611,10 +1636,15 @@ Process.prototype.reportSelf = function (trgt) {
 Process.prototype.reportCaller = function (trgt) {
     var sym = Symbol.for('caller'),
         frame = trgt.variables.silentFind(sym),
-        ctx;
+        ctx, nb;
     if (frame) {
         ctx = copy(frame.vars[sym].value);
-        ctx.expression = ctx.expression?.topBlock().fullCopy();
+        // ctx.expression = ctx.expression?.topBlock().fullCopy();
+        ctx.expression = ctx.expression?.fullCopy();
+        nb = ctx.expression?.nextBlock ? ctx.expression.nextBlock() : null;
+        if (nb) {
+            nb.destroy();
+        }
         ctx.inputs = [];
         return ctx;
     }
@@ -2771,6 +2801,9 @@ Process.prototype.doSetGlobalFlag = function (name, bool) {
     case 'turbo mode':
         this.doSetFastTracking(bool);
         break;
+    case 'case sensitivity':
+        Process.prototype.isCaseInsensitive = !bool;
+        break;
     case 'flat line ends':
         SpriteMorph.prototype.useFlatLineEnds = bool;
         break;
@@ -2796,6 +2829,8 @@ Process.prototype.reportGlobalFlag = function (name) {
     switch (name) {
     case 'turbo mode':
         return this.reportIsFastTracking();
+    case 'case sensitivity':
+        return !Process.prototype.isCaseInsensitive;
     case 'flat line ends':
         return SpriteMorph.prototype.useFlatLineEnds;
     case 'log pen vectors':
@@ -3044,13 +3079,15 @@ Process.prototype.reportMap = function (reporter, list) {
     }
     this.pushContext();
     parms = [next];
-    if (reporter.inputs.length > 1) {
-        parms.push(index);
+    if (reporter instanceof Context) { // can also be a list of rings
+        if (reporter.inputs.length > 1) {
+            parms.push(index);
+        }
+        if (reporter.inputs.length > 2) {
+            parms.push(list);
+        }
     }
-    if (reporter.inputs.length > 2) {
-        parms.push(list);
-    }
-    this.evaluate(reporter, new List(parms));
+    return this.evaluate(reporter, new List(parms));
 };
 
 Process.prototype.reportKeep = function (predicate, list) {
@@ -3124,13 +3161,15 @@ Process.prototype.reportKeep = function (predicate, list) {
     }
     this.pushContext();
     parms = [next];
-    if (predicate.inputs.length > 1) {
-        parms.push(index);
+    if (predicate instanceof Context) { // can also be a list of rings
+        if (predicate.inputs.length > 1) {
+            parms.push(index);
+        }
+        if (predicate.inputs.length > 2) {
+            parms.push(list);
+        }
     }
-    if (predicate.inputs.length > 2) {
-        parms.push(list);
-    }
-    this.evaluate(predicate, new List(parms));
+    return this.evaluate(predicate, new List(parms));
 };
 
 Process.prototype.reportFindFirst = function (predicate, list) {
@@ -3196,13 +3235,15 @@ Process.prototype.reportFindFirst = function (predicate, list) {
     }
     this.pushContext();
     parms = [next];
-    if (predicate.inputs.length > 1) {
-        parms.push(index);
+    if (predicate instanceof Context) { // can also be a list of rings
+        if (predicate.inputs.length > 1) {
+            parms.push(index);
+        }
+        if (predicate.inputs.length > 2) {
+            parms.push(list);
+        }
     }
-    if (predicate.inputs.length > 2) {
-        parms.push(list);
-    }
-    this.evaluate(predicate, new List(parms));
+    return this.evaluate(predicate, new List(parms));
 };
 
 Process.prototype.reportCombine = function (list, reporter) {
@@ -3220,7 +3261,8 @@ Process.prototype.reportCombine = function (list, reporter) {
     if (list.isLinked) {
         if (this.context.accumulator === null) {
             // check for special cases to speed up
-            if (this.canRunOptimizedForCombine(reporter)) {
+            if (reporter instanceof Context &&
+                    this.canRunOptimizedForCombine(reporter)) {
                 return this.reportListAggregation(
                     list,
                     reporter.expression.selector
@@ -3261,7 +3303,8 @@ Process.prototype.reportCombine = function (list, reporter) {
     } else { // arrayed
         if (this.context.accumulator === null) {
             // check for special cases to speed up
-            if (this.canRunOptimizedForCombine(reporter)) {
+            if (reporter instanceof Context &&
+                    this.canRunOptimizedForCombine(reporter)) {
                 return this.reportListAggregation(
                     list,
                     reporter.expression.selector
@@ -3299,13 +3342,15 @@ Process.prototype.reportCombine = function (list, reporter) {
     current = this.context.accumulator.target;
     this.pushContext();
     parms = [current, next];
-    if (reporter.inputs.length > 2) {
-        parms.push(index);
+    if (reporter instanceof Context) { // can also be a list of rings
+        if (reporter.inputs.length > 2) {
+            parms.push(index);
+        }
+        if (reporter.inputs.length > 3) {
+            parms.push(list);
+        }
     }
-    if (reporter.inputs.length > 3) {
-        parms.push(list);
-    }
-    this.evaluate(reporter, new List(parms));
+    return this.evaluate(reporter, new List(parms));
 };
 
 Process.prototype.reportListAggregation = function (list, selector) {
@@ -3540,7 +3585,7 @@ Process.prototype.doPlaySoundAtRate = function (name, rate) {
             : (typeof name === 'number' ? this.blockReceiver().sounds.at(name)
                 : detect(
                     this.blockReceiver().sounds.asArray(),
-                    s => s.name === name.toString()
+                    s => snapEquals(s.name, name.toString())
             )
         );
         if (!sound.audioBuffer) {
@@ -3581,7 +3626,7 @@ Process.prototype.reportGetSoundAttribute = function (choice, soundName) {
                 : (soundName instanceof List ? this.encodeSound(soundName)
                     : detect(
                         this.blockReceiver().sounds.asArray(),
-                        s => s.name === soundName.toString()
+                        s => snapEquals(s.name, soundName.toString())
                     )
                 )
             ),
@@ -3908,6 +3953,9 @@ Process.prototype.doAsk = function (data) {
         rightSpace;
 
     stage.keysPressed = {};
+    if (this.readyToTerminate) {
+        return;
+    }
     if (!data) {
         // terminate all other processes currently asking a question
         // or waiting to ask one
@@ -4175,7 +4223,15 @@ Process.prototype.getLastMessage = function () {
 // Process type inference
 
 Process.prototype.reportIsA = function (thing, typeString) {
-    return this.reportTypeOf(thing) === this.inputOption(typeString);
+    var choice = this.inputOption(typeString);
+    switch (choice) {
+    case 'agent':
+        return isSnapObject(thing);
+    case 'script':
+        return thing instanceof Context;
+    default:
+        return this.reportTypeOf(thing) === choice;
+    }
 };
 
 Process.prototype.assertType = function (thing, typeString, ...exempt) {
@@ -4183,11 +4239,14 @@ Process.prototype.assertType = function (thing, typeString, ...exempt) {
     // or a particular exempt value and raise an error if not
     // use responsibly wrt performance implications
     var thingType = this.reportTypeOf(thing);
-    if (thingType === typeString) {return true; }
+    if (thingType === typeString) {return thing; }
     if (typeString instanceof Array && contains(typeString, thingType)) {
-        return true;
+        return thing;
     }
-    if (exempt.length && contains(exempt, thing)) {return true; }
+    if (exempt.length && contains(exempt, thing)) {return thing; }
+    if (typeString === 'JSON' && thing instanceof List && thing.canBeJSON()) {
+        return thing;
+    }
     throw new Error(
         localize('expecting a') + ' ' +
         (typeString instanceof Array ?
@@ -4830,6 +4889,26 @@ Process.prototype.reportBasicLetter = function (idx, string) {
     return str[i - 1] || '';
 };
 
+Process.prototype.reportTextAttribute = function (choice, text) {
+    var option = this.inputOption(choice);
+    switch (option) {
+    case 'length':
+        return this.reportStringSize(text);
+    case 'lower case':
+        return this.hyper(
+            str => isString(str) ? str.toLowerCase() : str,
+            text
+        );
+    case 'upper case':
+        return this.hyper(
+            str => isString(str) ? str.toUpperCase() : str,
+            text
+        );
+    default:
+        return 0;
+    }
+};
+
 Process.prototype.reportStringSize = function (data) {
     return this.hyper(
         str => isString(str) ? str.length
@@ -5133,7 +5212,7 @@ Process.prototype.getOtherObject = function (name, thisObj, stageObj) {
         // find the corresponding sprite on the stage
         thatObj = detect(
             stage.children,
-            morph => morph.name === name
+            morph => snapEquals(morph.name, name)
         );
         if (!thatObj) {
             // check if the sprite in question is currently being
@@ -5746,7 +5825,7 @@ Process.prototype.reportBasicRelationTo = function (relation, name) {
     	return this.reportDirectionTo(name);
     }
     if (this.reportTypeOf(rel) === 'number') {
-        return this.reportRayLengthTo(name, rel);
+        return this.reportRayLengthTo(name, +rel);
     }
     return 0;
 };
@@ -6273,7 +6352,7 @@ Process.prototype.reportObject = function (name) {
     if (thisObj) {
         this.assertAlive(thisObj);
         stage = thisObj.parentThatIsA(StageMorph);
-        if (stage.name === name) {
+        if (snapEquals(stage.name, name)) {
             thatObj = stage;
         } else {
             thatObj = this.getOtherObject(name, thisObj, stage);
@@ -6615,9 +6694,9 @@ Process.prototype.reportVideo = function(attribute, name) {
         return stage.videoMotion.motionDirection;
     case 'snap':
         if (thatObj instanceof SpriteMorph) {
-            return thatObj.projectionSnap();
+            return thatObj.projectionSnap(thisObj);
         }
-        return stage.projectionSnap();
+        return stage.projectionSnap(thisObj);
     }
     return -1;
 };
@@ -6900,7 +6979,7 @@ Process.prototype.costumeNamed = function (name) {
     }
     return detect(
         this.blockReceiver().costumes.asArray(),
-        c => c.name === name.toString()
+        c => snapEquals(c.name, name.toString())
     );
 };
 

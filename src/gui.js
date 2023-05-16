@@ -80,13 +80,14 @@ BlockLabelPlaceHolderMorph, SpeechBubbleMorph, XML_Element, WatcherMorph, WHITE,
 BlockRemovalDialogMorph,TableMorph, isSnapObject, isRetinaEnabled, SliderMorph,
 disableRetinaSupport, enableRetinaSupport, isRetinaSupported, MediaRecorder,
 Animation, BoxMorph, BlockDialogMorph, RingMorph, Project, ZERO, BLACK,
-BlockVisibilityDialogMorph, ThreadManager, isString, SnapExtensions*/
+BlockVisibilityDialogMorph, ThreadManager, isString, SnapExtensions, snapEquals
+*/
 
-/*jshint esversion: 6*/
+/*jshint esversion: 8*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.gui = '2023-March-27';
+modules.gui = '2023-May-08';
 
 // Declarations
 
@@ -244,6 +245,7 @@ function IDE_Morph(config = {}) {
         mode:           str, currently "presentation" or "edit"
         hideControls:   bool, hide/show the tool bar
         hideCategories: bool, hide/show the palette block category buttons
+        noSpriteEdits:  bool, hide/show the corral & sprite controls/menus
         noSprites:      bool, hide/show the stage, corral, sprite editor
         noPalette:      bool, hide/show the palette including the categories
         noImports:      bool, disable/allow importing files via drag&drop
@@ -477,6 +479,44 @@ IDE_Morph.prototype.openIn = function (world) {
                     1
                 )) {
                 this.droppedText(hash);
+            } else if (hash.match(/\.(png|gif|svg|jpe?g|tiff)$/i)) {
+                // Import an image, which could contain embedded scripts
+                fetch(hash).then(res => res.blob()).then(blob => {
+                    let pic = new Image(),
+                        imgURL = URL.createObjectURL(blob),
+                        dataMarker = MorphicPreferences.pngPayloadMarker;
+
+                    pic.src = imgURL;
+                    pic.onload = (async () => {
+                        let buff = new Uint8Array(await blob.arrayBuffer()),
+                            strBuff = buff.reduce((acc, b) =>
+                                acc + String.fromCharCode(b), ""),
+                            hasImportanbleCode = (txt) =>
+                                txt.match(
+                                    /^<(blocks|block|script|sprite)/i
+                                ),
+                            embeddedData, canvas;
+
+                            if (strBuff.includes(dataMarker)) {
+                            embeddedData = decodeURIComponent(
+                                strBuff.split(dataMarker)[1]
+                            );
+                            if (hasImportanbleCode(embeddedData)) {
+                                return this.rawOpenScriptString(
+                                    embeddedData,
+                                    true
+                                );
+                            }
+                        } else {
+                            canvas = newCanvas(
+                                new Point(pic.width, pic.height),
+                                true
+                            );
+                            canvas.getContext('2d').drawImage(pic, 0, 0);
+                            this.droppedImage(canvas, decodeURIComponent(hash));
+                        }
+                    })();
+                });
             } else {
                 idx = hash.indexOf("&");
                 if (idx > 0) {
@@ -868,10 +908,15 @@ IDE_Morph.prototype.applyPaneHidingConfigurations = function () {
     // no sprites
     if (cnf.noSprites) {
         this.stage.hide();
-        this.corralBar.hide();
-        this.corral.hide();
+        cnf.noSpriteEdits = true;
+    }
+
+    // hide sprite editing widgets
+    if (cnf.noSpriteEdits) {
         this.spriteBar.hide();
         this.stageHandle.hide();
+        this.corralBar.hide();
+        this.corral.hide();
     }
 
     // no palette
@@ -2578,7 +2623,7 @@ IDE_Morph.prototype.fixLayout = function (situation) {
         if (this.spriteEditor.isVisible) {
             this.spriteEditor.setLeft(this.spriteBar.left());
             this.spriteEditor.setTop(
-                cnf.noSprites ?
+                cnf.noSprites || cnf.noSpriteEdits ?
                     (cnf.hideControls ? this.top() + border
                         : this.controlBar.bottom() + padding)
                     : this.spriteBar.bottom() + padding
@@ -2885,9 +2930,9 @@ IDE_Morph.prototype.droppedAudio = function (anAudio, name) {
     if (this.config.noImports) {return; }
 
     if (anAudio.src.indexOf('data:audio') !== 0) {
-    	// fetch and base 64 encode samples using FileReader
-    	this.getURL(
-        	anAudio.src,
+        // fetch and base 64 encode samples using FileReader
+        this.getURL(
+            anAudio.src,
             blob => {
                 var reader = new window.FileReader();
                 reader.readAsDataURL(blob);
@@ -3864,9 +3909,10 @@ IDE_Morph.prototype.newSceneName = function (name, ignoredScene) {
 
 IDE_Morph.prototype.newName = function (name, elements) {
     var count = 1,
-        newName = name;
+        newName = name,
+        exist = e => snapEquals(e, newName);
 
-    while (contains(elements, newName)) {
+    while (elements.some(exist)) {
         count += 1;
         newName = name + '(' + count + ')';
     }
@@ -4310,6 +4356,15 @@ IDE_Morph.prototype.settingsMenu = function () {
         StageMorph.prototype.enablePenLogging,
         'uncheck to turn off\nlogging pen vectors',
         'check to turn on\nlogging pen vectors',
+        false
+    );
+    addPreference(
+        'Case sensitivity',
+        () => Process.prototype.isCaseInsensitive =
+            !Process.prototype.isCaseInsensitive,
+        !Process.prototype.isCaseInsensitive,
+        'uncheck to ignore upper- and\n lowercase when comparing texts',
+        'check to distinguish upper- and\n lowercase when comparing texts',
         false
     );
     addPreference(
@@ -6230,7 +6285,7 @@ IDE_Morph.prototype.openScriptString = function (str) {
     ]);
 };
 
-IDE_Morph.prototype.rawOpenScriptString = function (str) {
+IDE_Morph.prototype.rawOpenScriptString = function (str, silently) {
     var world = this.world(),
         script;
 
@@ -6245,11 +6300,16 @@ IDE_Morph.prototype.rawOpenScriptString = function (str) {
     }
     script.fixBlockColor(null, true);
     this.spriteBar.tabBar.tabTo('scripts');
-    script.pickUp(world);
-    world.hand.grabOrigin = {
-        origin: this.palette,
-        position: this.palette.center()
-    };
+    if (silently) {
+        this.currentSprite.scripts.add(script);
+        this.currentSprite.scripts.cleanUp();
+    } else {
+        script.pickUp(world);
+        world.hand.grabOrigin = {
+            origin: this.palette,
+            position: this.palette.center()
+        };
+    }
     this.showMessage(
         'Imported Script.',
         2
@@ -6895,6 +6955,13 @@ IDE_Morph.prototype.toggleAppMode = function (appMode) {
         }
         // update undrop controls
         this.currentSprite.scripts.updateToolbar();
+        // hide hidden panes
+        if (this.config.noSpriteEdits) {
+            this.spriteBar.hide();
+            this.stageHandle.hide();
+            this.corralBar.hide();
+            this.corral.hide();
+        }
     }
     this.setExtent(this.world().extent());
 };
