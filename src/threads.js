@@ -65,7 +65,7 @@ StagePickerMorph, CustomBlockDefinition*/
 
 /*jshint esversion: 11, bitwise: false, evil: true*/
 
-modules.threads = '2023-May-07';
+modules.threads = '2023-June-08';
 
 var ThreadManager;
 var Process;
@@ -813,6 +813,7 @@ Process.prototype.evaluateBlock = function (block, argCount) {
     // check for special forms
     if (selector === 'reportVariadicOr' ||
             selector ===  'reportVariadicAnd' ||
+            selector === 'doIf' ||
             selector === 'reportIfElse' ||
             selector === 'doReport') {
         if (this.isCatchingErrors) {
@@ -918,7 +919,11 @@ Process.prototype.reportAssociativeBool = function (block, baseOp, short) {
                 len: tests.inputs().length,
                 pc: 1
             };
-            this.pushContext(acc.slots[0], outer);
+            if (acc.slots.length) {
+                this.pushContext(acc.slots[0], outer);
+            } else {
+                this.context.addInput(!short);
+            }
         } else { // tests is an ArgLabelMorph
             this.pushContext(tests.argMorph(), outer);
         }
@@ -1290,6 +1295,16 @@ Process.prototype.errorBubble = function (error, element) {
 
     errorMorph.fixLayout();
     return errorMorph;
+};
+
+Process.prototype.variableError = function (varName) {
+    throw new Error(
+        localize('a variable of name')
+            + ' \''
+            + varName
+            + '\'\n'
+            + localize('does not exist in this context')
+    );
 };
 
 // Process Lambda primitives
@@ -2215,7 +2230,7 @@ Process.prototype.reportTranspose = function (list) {
 Process.prototype.reportCrossproduct = function (lists) {
     this.assertType(lists, 'list');
     if (lists.isEmpty()) {
-        return lists;
+        return lists.cons(new List(), lists);
     }
     this.assertType(lists.at(1), 'list');
     return lists.crossproduct();
@@ -2543,6 +2558,8 @@ Process.prototype.reportLinkedNumbers = function (start, end) {
 
 // Process conditionals primitives
 
+/*  // original non-variadic non-special form version
+    // retained for documentation
 Process.prototype.doIf = function () {
     var args = this.context.inputs,
         outer = this.context.outerContext, // for tail call elimination
@@ -2558,6 +2575,7 @@ Process.prototype.doIf = function () {
     }
     this.pushContext();
 };
+*/
 
 Process.prototype.doIfElse = function () {
     var args = this.context.inputs,
@@ -2582,6 +2600,34 @@ Process.prototype.doIfElse = function () {
     }
 
     this.pushContext();
+};
+
+Process.prototype.doIf = function (block) {
+    // special form - experimental
+    var args = this.context.inputs,
+        inps = block.inputs(),
+        outer = this.context.outerContext,
+        acc = this.context.accumulator;
+
+    if (!acc) {
+        acc = this.context.accumulator = {
+            args: inps.slice(0, 2).concat(inps[2].inputs())
+        };
+    }
+    if (!args.length) {
+        if (acc.args.length) {
+            this.pushContext(acc.args.shift(), outer);
+            return;
+        }
+        this.popContext();
+        return;
+    }
+    if (args.pop()) {
+        this.popContext();
+        this.pushContext(acc.args.shift().evaluate()?.blockSequence(), outer);
+        return;
+    }
+    acc.args.shift();
 };
 
 Process.prototype.reportIfElse = function (block) {
@@ -7943,11 +7989,7 @@ Process.prototype.getVarNamed = function (name) {
                         : value === '' ? ''
                             : value || 0); // don't return null
     }
-    throw new Error(
-        localize('a variable of name \'')
-            + name
-            + localize('\'\ndoes not exist in this context')
-    );
+    this.variableError(name);
 };
 
 Process.prototype.setVarNamed = function (name, value) {
@@ -7958,11 +8000,7 @@ Process.prototype.setVarNamed = function (name, value) {
     var frame = this.homeContext.variables.silentFind(name) ||
             this.context.variables.silentFind(name);
     if (isNil(frame)) {
-        throw new Error(
-            localize('a variable of name \'')
-                + name
-                + localize('\'\ndoes not exist in this context')
-        );
+        this.variableError(name);
     }
     frame.vars[name].value = value;
 };
@@ -8682,11 +8720,7 @@ VariableFrame.prototype.find = function (name) {
     // the specified variable. otherwise throw an exception.
     var frame = this.silentFind(name);
     if (frame) {return frame; }
-    throw new Error(
-        localize('a variable of name \'')
-            + name
-            + localize('\'\ndoes not exist in this context')
-    );
+    this.variableError(name);
 };
 
 VariableFrame.prototype.silentFind = function (name) {
@@ -8762,11 +8796,7 @@ VariableFrame.prototype.getVar = function (name) {
         // empty input with a Binding-ID called without an argument
         return '';
     }
-    throw new Error(
-        localize('a variable of name \'')
-            + name
-            + localize('\'\ndoes not exist in this context')
-    );
+    this.variableError(name);
 };
 
 VariableFrame.prototype.addVar = function (name, value) {
@@ -8781,6 +8811,8 @@ VariableFrame.prototype.deleteVar = function (name) {
         delete frame.vars[name];
     }
 };
+
+VariableFrame.prototype.variableError = Process.prototype.variableError;
 
 // VariableFrame tools
 
@@ -8988,9 +9020,9 @@ JSCompiler.prototype.compileExpression = function (block) {
     // first check for special forms and infix operators
     switch (selector) {
     case 'reportVariadicOr':
-        return this.compileInfix('||', inputs);
+        return this.compileInfix('||', inputs[0].inputs());
     case 'reportVariadicAnd':
-        return this.compileInfix('&&', inputs);
+        return this.compileInfix('&&', inputs[0].inputs());
     case 'reportIfElse':
         return '(' +
             this.compileInput(inputs[0]) +
@@ -9057,7 +9089,8 @@ JSCompiler.prototype.compileExpression = function (block) {
             this.compileInput(inputs[0]) +
             ') {\n' +
             this.compileSequence(inputs[1].evaluate()) +
-            '}';
+            '}' +
+            this.compileElseIf(inputs[2]);
     case 'doIfElse':
         return 'if (' +
             this.compileInput(inputs[0]) +
@@ -9086,6 +9119,13 @@ JSCompiler.prototype.compileExpression = function (block) {
     }
 };
 
+JSCompiler.prototype.compileElseIf = function (multiArg) {
+    return (multiArg.inputs().map((slot, i) => i % 2 === 0 ?
+        ' else if (' + this.compileInput(slot) + ') '
+        : '{\n' + this.compileSequence(slot.evaluate()) + '}'
+    ).join(''));
+};
+
 JSCompiler.prototype.compileSequence = function (commandBlock) {
     if (commandBlock == null) return '';
     commandBlock = commandBlock.blockSequence();
@@ -9097,8 +9137,8 @@ JSCompiler.prototype.compileSequence = function (commandBlock) {
 };
 
 JSCompiler.prototype.compileInfix = function (operator, inputs) {
-    return '(' + this.compileInput(inputs[0]) + ' ' + operator + ' ' +
-        this.compileInput(inputs[1]) + ')';
+    return inputs.map(each =>
+        this.compileInput(each)).join(' ' + operator + ' ');
 };
 
 JSCompiler.prototype.compileInputs = function (array) {

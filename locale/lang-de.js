@@ -170,6 +170,7 @@ SnapTranslator.dict.de = {
     "For all Sprites": "Allen gemeinsam",
     "Frequency Distribution Analysis": "",
     "Generate costumes from letters or words of text.": "",
+    "Generate puzzle": "Puzzle generieren",
     "Getters and setters": "",
     "Glide, grow and rotate using easing functions.": "",
     "HSL pen color model": "HSL Farbmodell",
@@ -724,6 +725,7 @@ SnapTranslator.dict.de = {
     "edit...": "Bearbeiten...",
     "editables": "Eingaben",
     "elegant (90)": "elegant (90)",
+    "else if _ _": "sonst falls _ _",
     "enable Morphic context menus and inspectors, not user-friendly!": "ermöglicht Morphic Funktionen",
     "enter": "Eingabetaste",
     "entering development mode. error catching is turned off, use the browser's web console to see error messages.": "",
@@ -810,7 +812,7 @@ SnapTranslator.dict.de = {
     "huge (4x)": "riesig (4x)",
     "i": "i",
     "identical to": "identisch mit",
-    "if _ _": "falls _ _",
+    "if _ _ _": "falls _ _ _",
     "if _ _ else _": "falls _ _ sonst _",
     "if _ then _ else _": "falls _ dann _ sonst _",
     "if on edge, bounce": "pralle vom Rand ab",
@@ -856,8 +858,7 @@ SnapTranslator.dict.de = {
     "language_translator": "Jens Mönig, Jadga Hügle",
     "large": "groß",
     "last": "letztes",
-    "last changed": "",
-    "last_changed": "2023-05-09",
+    "last_changed": "2023-06-09",
     "launch _ _": "starte _ _",
     "left": "Rand links",
     "left arrow": "Pfeil nach links",
@@ -1354,6 +1355,7 @@ SnapTranslator.dict.de = {
     "whirl": "Wirbel",
     "whitespace": "Leerraum",
     "width": "Breite",
+    "with": "mit",
     "with data": "mit Daten",
     "with inputs": "mit Eingaben",
     "word": "Wort",
@@ -1367,4 +1369,4 @@ SnapTranslator.dict.de = {
     "year:": "",
     "your own": "eigene",
     "z": "z"
-}
+};
