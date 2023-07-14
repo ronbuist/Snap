@@ -61,11 +61,11 @@ StageMorph, SpriteMorph, StagePrompterMorph, Note, modules, isString, copy, Map,
 isNil, WatcherMorph, List, ListWatcherMorph, alert, console, TableMorph, BLACK,
 TableFrameMorph, ColorSlotMorph, isSnapObject, newCanvas, Symbol, SVG_Costume,
 SnapExtensions, AlignmentMorph, TextMorph, Cloud, HatBlockMorph, InputSlotMorph,
-StagePickerMorph, CustomBlockDefinition*/
+StagePickerMorph, CustomBlockDefinition, CommentMorph*/
 
 /*jshint esversion: 11, bitwise: false, evil: true*/
 
-modules.threads = '2023-June-08';
+modules.threads = '2023-July-14';
 
 var ThreadManager;
 var Process;
@@ -1317,6 +1317,9 @@ Process.prototype.reify = function (topBlock, parameterNames, isCustomBlock) {
         ),
         i = 0;
 
+    if (this.context?.expression instanceof RingMorph) {
+        context.comment = this.context.expression?.comment?.text();
+    }
     if (topBlock) {
         context.expression = this.enableLiveCoding ||
             this.enableSingleStepping ?
@@ -2272,9 +2275,34 @@ Process.prototype.reportListAttribute = function (choice, list) {
     case 'transpose':
         this.assertType(list, 'list');
         return list.transpose();
+    case 'uniques':
+        this.assertType(list, 'list');
+        if (list.canBeCSV()) {
+            if (Process.prototype.isCaseInsensitive) {
+                return list.map(row => row instanceof List ?
+                    row.map(cell =>
+                        cell.toString().toLowerCase()
+                    )
+                    : row.toString().toLowerCase()
+                ).distribution().columns().at(1);
+            }
+            return list.distribution().columns().at(1);
+        }
+        return this.reportUniqueValues(list);
     case 'distribution':
         this.assertType(list, 'list');
-        return list.distribution();
+        if (list.canBeCSV()) {
+            if (Process.prototype.isCaseInsensitive) {
+                return list.map(row => row instanceof List ?
+                    row.map(cell =>
+                        cell.toString().toLowerCase()
+                    )
+                    : row.toString().toLowerCase()
+                ).distribution();
+            }
+            return list.distribution();
+        }
+        return this.reportDistribution(list);
     case 'sorted':
         this.assertType(list, 'list');
         return this.reportSorted(list);
@@ -2339,7 +2367,67 @@ Process.prototype.doShowTable = function (list) {
     new TableDialogMorph(list).popUp(this.blockReceiver().world());
 };
 
-// process - sorting and shuffling a list (general utility)
+// process - analyzing sorting and shuffling a list (general utility)
+
+Process.prototype.reportUniqueValues = function (list) {
+    // Filter - answer a new list representing the set of unique values
+    // in the list based on equality,
+    // interpolated so it can be interrupted by the user
+    // because snapEquals() can be a lot slower than identity comparison
+    var next;
+    if (this.context.accumulator === null) {
+        this.assertType(list, 'list');
+        this.context.accumulator = {
+            idx : 0,
+            target : []
+        };
+    }
+    if (this.context.accumulator.idx === list.length()) {
+        this.returnValueToParentContext(
+            new List(this.context.accumulator.target)
+        );
+        return;
+    }
+    this.context.accumulator.idx += 1;
+    next = list.at(this.context.accumulator.idx);
+    if (!this.context.accumulator.target.some(any => snapEquals(any, next))) {
+        this.context.accumulator.target.push(next);
+    }
+    this.pushContext();
+};
+
+Process.prototype.reportDistribution = function (list) {
+    // answer a new list with an entry for each unique value and the
+    // number of its occurrences in the source list,
+    // interpolated so it can be interrupted by the user
+    // because snapEquals() can be a lot slower than identity comparison
+    var next, record;
+    if (this.context.accumulator === null) {
+        this.assertType(list, 'list');
+        this.context.accumulator = {
+            idx : 0,
+            target : []
+        };
+    }
+    if (this.context.accumulator.idx === list.length()) {
+        this.returnValueToParentContext(
+            new List(this.context.accumulator.target.map(row => new List(row)))
+        );
+        return;
+    }
+    this.context.accumulator.idx += 1;
+    next = list.at(this.context.accumulator.idx);
+
+    record = this.context.accumulator.target.find(row =>
+        snapEquals(row[0], next)
+    );
+    if (record !== undefined) {
+        record[1] += 1;
+    } else {
+        this.context.accumulator.target.push([next, 1]);
+    }
+    this.pushContext();
+};
 
 Process.prototype.reportSorted = function (data) {
     return new List(data.itemsArray().slice().sort((a, b) =>
@@ -6194,6 +6282,18 @@ Process.prototype.reportBasicAttributeOf = function (attribute, name) {
                 return thatObj.getVolume();
             case 'balance':
                 return thatObj.getPan();
+            case 'extent':
+                if (thatObj instanceof StageMorph) {
+                    return new List([
+                        thatObj.dimensions.x,
+                        thatObj.dimensions.y
+                    ]);
+                }
+                this.assertType(thatObj, 'sprite');
+                return new List([
+                    thatObj.width() / stage.scale,
+                    thatObj.height() / stage.scale,
+                ]);
             case 'width':
                 if (thatObj instanceof StageMorph) {
                     return thatObj.dimensions.x;
@@ -6323,6 +6423,20 @@ Process.prototype.reportGet = function (query) {
                     each => each.fullCopy().reify()
                 )
             );
+        case 'solutions':
+            if (thisObj.solution) {
+                return new List(
+                    thisObj.solution.scripts.sortedElements().filter(
+                        each => each instanceof BlockMorph
+                    ).map(
+                        each => new List([
+                            each?.comment.text() || '',
+                            each.fullCopy().reify()
+                        ])
+                    )
+                );
+            }
+            return new List();
         case 'blocks': // palette unoordered without inherited methods
             return new List(
                 thisObj.parentThatIsA(StageMorph).globalBlocks.concat(
@@ -7271,12 +7385,27 @@ Process.prototype.reportBlockAttribute = function (attribute, block) {
 
 Process.prototype.reportBasicBlockAttribute = function (attribute, block) {
     var choice = this.inputOption(attribute),
-        expr, body, slots, def, info, loc;
+        expr, body, slots, def, info, loc, cmt;
     this.assertType(block, ['command', 'reporter', 'predicate']);
     expr = block.expression;
     switch (choice) {
     case 'label':
         return expr ? expr.abstractBlockSpec() : '';
+    case 'comment':
+        if (block.comment) {
+            return block.comment;
+        }
+        cmt = expr?.comment?.text();
+        if (cmt) {
+            return cmt;
+        }
+        if (expr.isCustomBlock) {
+            def = (expr.isGlobal ?
+                expr.definition
+                : this.blockReceiver().getMethod(expr.semanticSpec));
+            return def.comment?.text() || expr?.comment?.text() || '';
+        }
+        return '';
     case 'definition':
         if (expr.isCustomBlock) {
             if (expr.isGlobal) {
@@ -7319,7 +7448,11 @@ Process.prototype.reportBasicBlockAttribute = function (attribute, block) {
         return new List(
             expr.inputs().map(each =>
                 each instanceof ReporterBlockMorph ?
-                    each.getSlotSpec() : each.getSpec()
+                    each.getSlotSpec()
+                    : (each instanceof MultiArgMorph &&
+                            each.slotSpec instanceof Array ?
+                        each.slotSpec
+                        : each.getSpec())
             )
         ).map(spec => this.slotType(spec));
     case 'defaults':
@@ -7383,6 +7516,44 @@ Process.prototype.reportBasicBlockAttribute = function (attribute, block) {
             });
         }
         return slots;
+    case 'replaceables':
+        slots = new List();
+        if (expr.isCustomBlock) {
+            def = (expr.isGlobal ?
+                expr.definition
+                : this.blockReceiver().getMethod(expr.semanticSpec));
+            def.declarations.forEach(value => slots.add(!value[4]));
+        } else {
+            expr.inputs().forEach(slot => {
+                if (slot instanceof ReporterBlockMorph) {
+                    slot = SyntaxElementMorph.prototype.labelPart(
+                        slot.getSlotSpec()
+                    );
+                }
+                slots.add(!slot.isStatic);
+            });
+        }
+        return slots;
+    case 'separators':
+        slots = new List();
+        if (expr.isCustomBlock) {
+            def = (expr.isGlobal ?
+                expr.definition
+                : this.blockReceiver().getMethod(expr.semanticSpec));
+            def.declarations.forEach(value => slots.add(value[5]));
+        } else {
+            expr.inputs().forEach(slot => {
+                if (slot instanceof ReporterBlockMorph) {
+                    slot = SyntaxElementMorph.prototype.labelPart(
+                        slot.getSlotSpec()
+                    );
+                }
+                slots.add(slot instanceof MultiArgMorph ?
+                    slot.infix : ''
+                );
+            });
+        }
+        return slots;
     case 'translations':
         if (expr.isCustomBlock) {
             def = (expr.isGlobal ?
@@ -7402,6 +7573,10 @@ Process.prototype.reportBasicBlockAttribute = function (attribute, block) {
 Process.prototype.slotType = function (spec) {
     // answer a number indicating the shape of a slot represented by its spec.
     // Note: you can also use it to translate mnemonics into slot type numbers
+    if (spec instanceof Array) {
+        return new List(spec.map(each => this.slotType(each)));
+    }
+
     var shift = 0,
         key = spec.toLowerCase(),
         num;
@@ -7581,6 +7756,12 @@ Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
     case 'label':
         def.setBlockLabel(val);
         break;
+    case 'comment':
+        def.comment = new CommentMorph(val);
+        if (def.body) {
+            def.body.comment = val;
+        }
+        break;
     case 'definition':
         this.assertType(val, types);
         def.setBlockDefinition(val);
@@ -7718,6 +7899,33 @@ Process.prototype.doSetBlockAttribute = function (attribute, block, val) {
                 info[3] = !options;
                 def.declarations.set(name, info);
             }
+        });
+        break;
+    case 'replaceables':
+        this.assertType(val, ['list', 'Boolean', 'number']);
+        if (!(val instanceof List)) {
+            val = new List([val]);
+        }
+        def.inputNames().forEach((name, idx) => {
+            var info = def.declarations.get(name),
+                options = val.at(idx + 1);
+            if ([true, false, 0, 1, '0', '1'].includes(options)) {
+                options = +options;
+                info[4] = !options;
+                def.declarations.set(name, info);
+            }
+        });
+        break;
+    case 'separators':
+        this.assertType(val, ['list', 'text', 'number']);
+        if (!(val instanceof List)) {
+            val = new List([val]);
+        }
+        def.inputNames().forEach((name, idx) => {
+            var info = def.declarations.get(name),
+                options = val.at(idx + 1);
+            info[5] = options.toString();
+            def.declarations.set(name, info);
         });
         break;
     case 'translations':
@@ -8357,6 +8565,7 @@ function Context(
     }
     this.inputs = [];
     this.pc = 0;
+    this.comment = null;
     this.isContinuation = false;
     this.startTime = null;
     this.activeSends = null;
@@ -8394,7 +8603,14 @@ Context.prototype.image = function () {
 Context.prototype.toBlock = function () {
     var ring = new RingMorph(),
         block,
+        cmt,
         cont;
+
+    if (this.comment) {
+        cmt = new CommentMorph(this.comment);
+        cmt.block = ring;
+        ring.comment = cmt;
+    }
 
     if (this.expression instanceof Morph) {
         block = this.expression.fullCopy();
@@ -8433,6 +8649,15 @@ Context.prototype.toBlock = function () {
         );
     }
     return ring;
+};
+
+Context.prototype.toUserBlock = function () {
+    var ring = this.toBlock(),
+        block = ring.contents();
+    if (!block || ring.inputNames().length) {
+        return ring;
+    }
+    return block;
 };
 
 // Context continuations:

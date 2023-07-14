@@ -94,7 +94,7 @@ embedMetadataPNG, SnapExtensions, SnapSerializer, snapEquals*/
 
 /*jshint esversion: 11*/
 
-modules.objects = '2023-May-24';
+modules.objects = '2023-July-14';
 
 var SpriteMorph;
 var StageMorph;
@@ -2078,6 +2078,9 @@ SpriteMorph.prototype.init = function (globals) {
     this.rotatesWithAnchor = true;
     this.layers = null; // cache for dragging nested sprites, don't serialize
 
+    // Parsons Problems properties
+    this.solution = null;
+
     this.primitivesCache = {}; // not to be serialized (!)
     this.paletteCache = {}; // not to be serialized (!)
     this.categoriesCache = null; // not to be serialized (!)
@@ -2178,6 +2181,9 @@ SpriteMorph.prototype.fullCopy = function (forClone) {
                 block.definition = cb
             );
         });
+        if (c.costume instanceof Costume && !c.getCostumeIdx()) {
+            c.costume = c.costume.copy();
+        }
         arr = [];
         this.costumes.asArray().forEach(costume => {
             var cst = forClone ? costume : costume.copy();
@@ -6550,7 +6556,7 @@ SpriteMorph.prototype.xPosition = function () {
 
     var stage = this.parentThatIsA(StageMorph);
 
-    if (!stage && this.parent.grabOrigin) { // I'm currently being dragged
+    if (!stage && this.parent?.grabOrigin) { // I'm currently being dragged
         stage = this.parent.grabOrigin.origin;
     }
     if (stage) {
@@ -6566,7 +6572,7 @@ SpriteMorph.prototype.yPosition = function () {
 
     var stage = this.parentThatIsA(StageMorph);
 
-    if (!stage && this.parent.grabOrigin) { // I'm currently being dragged
+    if (!stage && this.parent?.grabOrigin) { // I'm currently being dragged
         stage = this.parent.grabOrigin.origin;
     }
     if (stage) {
@@ -7259,6 +7265,11 @@ SpriteMorph.prototype.allBlockInstances = function (definition) {
         objects = stage.children.filter(morph =>
             morph instanceof SpriteMorph
         );
+        objects.slice().forEach(sprite => {
+            if (sprite.solution) {
+                objects.push(sprite.solution);
+            }
+        });
         objects.push(stage);
         objects.forEach(sprite =>
             blocks = blocks.concat(
@@ -11087,7 +11098,7 @@ SpriteBubbleMorph.prototype.dataAsMorph = function (data) {
         contents.isDraggable = !sprite.disableDraggingData;
 
         contents.selectForEdit = function () {
-            var script = data.toBlock(),
+            var script = data.toUserBlock(),
                 prepare = script.prepareToBeGrabbed,
                 ide = this.parentThatIsA(IDE_Morph)||
                     this.world().childThatIsA(IDE_Morph);
@@ -12519,7 +12530,7 @@ CellMorph.prototype.createContents = function () {
                 !SpriteMorph.prototype.disableDraggingData;
 
             this.contentsMorph.selectForEdit = function () {
-                var script = myself.contents.toBlock(),
+                var script = myself.contents.toUserBlock(),
                     prepare = script.prepareToBeGrabbed,
                     ide = this.parentThatIsA(IDE_Morph) ||
                         this.world().childThatIsA(IDE_Morph);
