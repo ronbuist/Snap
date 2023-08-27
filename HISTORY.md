@@ -1,6 +1,52 @@
 # Snap! (BYOB) History
 
 ## in development:
+
+## 9.0.5:
+* **Notable Changes:**
+    * MQTT extension update, thanks, Xavier and Simon!
+
+2023-08-01
+* MQTT extension update, thanks, Xavier and Simon!
+* prepared v9.0.5 patch
+
+## 9.0.4:
+* **Notable Changes:**
+    * Emergency Patch for BJC Projects.
+    * The recent cache busting in #3238 is incompatible with BJC servers.
+
+## 9.0.3:
+* **Notable Changes:**
+    * do not cache remote requests, thanks, Michael!
+* **Translation Updates:**
+    * new Tigrinya translation, yay! Thanks, Tesfaldet Negash and Heran Sium!
+    * Catalan, thanks, Joan!
+
+### 2023-07-31
+* new dev version
+* gui: do not cache remote requests, thanks, Michael!
+* Catalan translation update, thanks, Joan!
+* new Tigrinya translation, yay! Thanks, Tesfaldet Negash and Heran Sium!
+* migrated block specs of new Tigrinya translation to the new format (underscores as placeholders for input slots)
+* prepared v9.0.3 patch
+
+## 9.0.2:
+* **Notable Fixes:**
+    * fixed #3239 (a context serialization glitch)
+
+### 2023-07-27
+* store: fixed #3239 (a context serialization glitch)
+* prepared v9.0.2 patch
+
+## 9.0.1:
+* **Notable Fixes:**
+    * fixed "play sound until done" blocking glitch
+
+### 2023-07-19
+* objects: fixed "play sound until done" blocking glitch
+* prepared v9.0.1 patch
+
+## 9.0.0:
 * **New Features:**
     * new "this" reporter for introspection offering access to "script", "caller", "continuation" and "inputs", enabling programs to access their dynamic scope and runtime call-stack
     * "call" is now hyperized and accepts a list/table etc. of rings as procedure input, returns a list/table etc. of applying all arguments to each ring. Currently constrained to primitive data (text, number, Boolean) inputs, albeit in any dimension (e.g. lists of lists of data)
@@ -9,7 +55,7 @@
     * new "sorted" and "shuffled" selectors in list properties reporter's dropdown
     * new "stage", "agent" and "script" selectors in "is a?" reporter's dropdown
     * new "case sensitivity" preference setting
-    * new "case sensitivity" selector to the setting blocks' dropdowns 
+    * new "case sensitivity" selector to the setting blocks' dropdowns
     * new dropdown menu with "length", "lower case" and "upper case" selectors in the "length of text" reporter
     * new option to make individual input slots in custom blocks "static", i.e. irreplaceable by reporters
     * new option to specify a "separator" (infix) label for variadic input slots inside custom blocks
@@ -26,6 +72,7 @@
     * new embedding configuration options: noSpriteEdits
     * Expanded the `#open:` URL scheme to accept image URLs.
     * new "ide_translation_dict", "ide_set_translation_dict(data)" and "txt_export(txt, name)" extension primitives
+    * new "hideDefaultCat" configuration setting, lets you hide the default built-in category buttons
 * **Notable Changes:**
     * IF is now variadic and expandable with "else if" cases
     * explicit variadic input list visuals
@@ -40,6 +87,7 @@
     * made "distribution" list selector case-sensitivity setting aware and optimized for atomic data
     * slightly optimized pen drawing performance when WARPed
     * removed multibranched conditional library (cases.xml), because IF is now variadic
+    * removed the "remove duplicates" reporter from the "list utilities" libraries because it is now a primitive
     * updated audio comp library with a faster (hyper) version of the "Hz for secs" reporter
     * updated animation library with a faster (hyper) version of "glide" and added "steps" selector to the "animate" command
     * new "fade-in" block in the audio comp library lets you reduce audible "clicks" in sounds computed from raw samples
@@ -68,13 +116,35 @@
     * fixed JIT-compiling variadic Boolean infix ops (AND, OR)
     * fixed identity case for COMBINATIONS
     * fixed occasional costume reference error for computed, non-wardrobe costumes in sprite-duplicates
+    * fixed the "stage size" reporter in the "Getters and setters" library
+    * fixed accessing negative indices in linked lists
 * **Documentation Updates:**
-    * extended API documentation for "noSpriteEdits" configuration
+    * extended API documentation for "noSpriteEdits" and "hideDefaultCat" configurations
     * updated CONTRIBUTING.MD for the new underscore-placeholder notation for block input slot translations
 * **Translation Updates:**
     * German
     * Greek, thanks, HM100!
     * Armenian, thanks to the contributors!
+
+### 2023-07-18
+* lists: fixed accessing negative indices in linked lists
+* v9-rc17
+* blocks: fixed a multi-arg slot insertion / deletion glitch
+* v9-rc18
+* blocks: tweaked rendering of variadic arrows
+* v9-rc19
+* prepared v9 release
+
+### 2023-07-17
+* Getters and setter library: fixed "stage size" reporter
+* List utilities library: removed "remove duplicates" reporter (because it is now a primitive)
+* v9-rc14
+* gui: new "hideDefaultCat" configuration setting
+* updated API documentation for "hideDefaultCat" configuration
+* v9-rc15
+* updated Pyret transpilation example
+* changed list symbol representation for variadic slots
+* v9-rc16
 
 ### 2023-07-14
 * byob, threads: prevent custom blocks from being deleted from scenes that have a puzzle solution
@@ -115,7 +185,7 @@
 * v9-rc6
 
 ### 2023-07-10
-* new "Tiles" library, divides the stage into sub-regions in each of which to perform an action 
+* new "Tiles" library, divides the stage into sub-regions in each of which to perform an action
 * new "Arcs" library, turns sprites by a delta of degrees moving them at a given radius
 * v9-rc4
 
@@ -124,7 +194,7 @@
 * blocks: moved "comment" down one item in the dropdown menu
 * blocks, threads: new "extent" selector in the "(attribute) OF (object)" reporter's dropdown menu
 * German translation update for the new "extent" menu option string
-* byob: fixed a newly introduced non-long-form input slot bug when clicking the loop-arrow check mark 
+* byob: fixed a newly introduced non-long-form input slot bug when clicking the loop-arrow check mark
 * v9-rc2
 * fixed a dropdown menu glitch in the OF reporter
 * v9-rc3
@@ -133,7 +203,7 @@
 * v9-rc1
 
 ### 2023-07-05
-* lists, blocks, threads: new "values" selector in list properties reporter's dropdown, answers a new list containing the source list's unique values based on equality (i.e. a set) 
+* lists, blocks, threads: new "values" selector in list properties reporter's dropdown, answers a new list containing the source list's unique values based on equality (i.e. a set)
 * German translation update for "values" selector
 * blocks, objects, tables, threads: when dragging scripts and blocks out of balloons and watchers only include the surrounding ring if it has formal parameters
 * tables: fixed dragging blocks, costumes and sounds out of table views
