@@ -161,7 +161,7 @@ SVG_Costume, embedMetadataPNG, ThreadManager, snapEquals*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.blocks = '2024-January-23';
+modules.blocks = '2024-March-18';
 
 var SyntaxElementMorph;
 var BlockMorph;
@@ -5398,6 +5398,12 @@ BlockMorph.prototype.getHighlight = function () {
     return null;
 };
 
+BlockMorph.prototype.flashOutline = function (color, border) {
+    this.removeHighlight();
+    this.addBack(this.outline(color, border));
+    this.fullChanged();
+};
+
 BlockMorph.prototype.outline = function (color, border) {
     var highlight = new BlockHighlightMorph(),
         fb = this.fullBounds(),
@@ -7403,9 +7409,16 @@ ReporterBlockMorph.prototype.mouseClickLeft = function (pos) {
 ReporterBlockMorph.prototype.userDestroy = function () {
     // make sure to restore default slot of parent block
     var target = this.selectForEdit(), // enable copy-on-edit
-        rcvr = this.scriptTarget(true);
+        rcvr = this.scriptTarget(true),
+        parent;
+
     if (target !== this) {
         return this.userDestroy.call(target);
+    }
+
+    parent = this.parentThatIsA(SyntaxElementMorph);
+    if (parent) {
+        this.parent.reactToGrabOf(this); // fix highlight and variadic case
     }
 
     // for undrop / redrop
@@ -9283,8 +9296,42 @@ ScriptsMorph.prototype.unflash = function () {
         if (each instanceof SyntaxElementMorph && each.unflash) {
             each.unflash();
         }
+        if (each instanceof BlockMorph) {
+            each.removeHighlight();
+        }
     });
 
+};
+
+ScriptsMorph.prototype.flashOutlineCodeIdx = function (
+    idx,
+    color = null,
+border = 3) {
+    // highlight the innermost block located in the textual code indicated
+    // by the given character index. Optional color string, form "r,g,b[,a]".
+    var block = this.blockAtIdx(idx);
+    this.unflashOutline();
+    if (block) {
+        block.flashOutline(color ? Color.fromString(color) : null, border);
+    }
+};
+
+ScriptsMorph.prototype.unflashOutline = function () {
+    this.forAllChildren(each => {
+        if (each instanceof BlockMorph) {
+            each.removeHighlight();
+        }
+    });
+
+};
+
+ScriptsMorph.prototype.balloonCodeIdx = function (idx, contents) {
+    // highlight the innermost block located in the textual code indicated
+    // by the given character index. Optional color string, form "r,g,b[,a]".
+    var block = this.blockAtIdx(idx);
+    if (block) {
+        block.showBubble(contents);
+    }
 };
 
 // ArgMorph //////////////////////////////////////////////////////////
@@ -11800,7 +11847,7 @@ InputSlotMorph.prototype.mappedCode = function () {
         code = StageMorph.prototype.codeMappings.number || '<#1>';
         return code.replace(/<#1>/g, val);
     }
-    if (!isNaN(parseFloat(val))) {return val; }
+    if (!isNaN(+val)) {return val; }
     if (!isString(val)) {return val; }
     if (block && contains(
             ['doSetVar', 'doChangeVar', 'doShowVar', 'doHideVar'],
@@ -13811,7 +13858,9 @@ MultiArgMorph.prototype.refresh = function () {
 
 MultiArgMorph.prototype.deleteSlot = function (anInput) {
     var len = this.inputs().length,
-        idx = this.children.indexOf(anInput);
+        idx = this.children.indexOf(anInput),
+        block = this.parentThatIsA(BlockMorph),
+        sprite = block.scriptTarget();
     if (len <= this.minInputs) {
         return;
     }
@@ -13824,11 +13873,19 @@ MultiArgMorph.prototype.deleteSlot = function (anInput) {
     }
     this.removeChild(anInput);
     this.fixLayout();
+    sprite.recordUserEdit(
+        'scripts',
+        'poly slot',
+        'delete',
+        block.abstractBlockSpec()
+    );
 };
 
 MultiArgMorph.prototype.insertNewInputBefore = function (anInput, contents) {
     var idx = this.children.indexOf(anInput),
         newPart = this.labelPart(this.slotSpec),
+        block = this.parentThatIsA(BlockMorph),
+        sprite = block.scriptTarget(),
         infix;
     
     if (this.maxInputs && (this.inputs().length >= this.maxInputs)) {
@@ -13850,6 +13907,12 @@ MultiArgMorph.prototype.insertNewInputBefore = function (anInput, contents) {
         this.parent.fixLabelColor();
     }
     this.fixLayout();
+    sprite.recordUserEdit(
+        'scripts',
+        'poly slot',
+        'insert',
+        block.abstractBlockSpec()
+    );
     return newPart;
 };
 

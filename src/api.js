@@ -39,14 +39,14 @@
 
 */
 
-/*global modules, IDE_Morph, isString, Map, List, world, isNil, Project,
-detect, isSnapObject, VariableFrame*/
+/*global modules, IDE_Morph, isString, Map, List, Project, detect, isSnapObject,
+VariableFrame*/
 
 /*jshint esversion: 11*/
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.api = '2024-February-12';
+modules.api = '2024-February-22';
 
 // IDE_Morph external communication API
 /*
@@ -54,20 +54,6 @@ modules.api = '2024-February-12';
     add message listeners to Snap! broadcasts and access
     global variables
 */
-
-window.onmessage = function (event) {
-    // make the API accessible from outside an iframe
-    var ide = world.children[0];
-    if (!isNil(event.data.selector)) {
-        window.top.postMessage(
-            {
-                selector: event.data.selector,
-                response: ide[event.data.selector].apply(ide, event.data.params)
-            },
-            '*'
-        );
-    }
-};
 
 IDE_Morph.prototype.getScenes = function () {
     // return an array of all scenenames
@@ -309,6 +295,48 @@ IDE_Morph.prototype.unflashSpriteScripts = function (name) {
     // un-highlight the scripts of the sprite indicated by name or the current
     // sprite or stage if none
     this.spriteNamed(name).scripts.unflash();
+};
+
+IDE_Morph.prototype.flashSpriteScriptOutlineAt = function (
+    charIdx,
+    name,
+    clr,
+    border
+) {
+    // highlight the outline of the innermost block of the scripts of the sprite
+    // indicated by name or the current sprite or stage if none that corresponds
+    // to the index of the text given the current codification mapping.
+    // Optionally a string of comma-separated "r,g,b[,a]" values can be passed
+    // in to specify a specific highlight color, where each color component is
+    // a number between 0 and 255 and alpha is a fraction between 0 and 1.
+    // If none is supplied the default flash color is used.
+    // Also optionally a border width of pixels can be specified
+    var scripts = this.spriteNamed(name).scripts;
+    // scripts.unflash();
+    scripts.flashOutlineCodeIdx(charIdx, clr, border);
+};
+
+IDE_Morph.prototype.unflashSpriteScriptsOutline = function (name) {
+    // un-highlight the script outlines of the sprite indicated by name or the
+    // current sprite or stage if none
+    this.spriteNamed(name).scripts.unflashOutline();
+};
+
+IDE_Morph.prototype.showScriptBalloonAt = function (contents, charIdx, name) {
+    // popup a balloon at the innermost block of the scripts of the sprite
+    // indicated by name or the current sprite or stage if none that corresponds
+    // to the index of the text given the current codification mapping, and
+    // display the given contents, which can be a string, number, costume,
+    // morph, canvas, list, table etc. (anything first-class in Snap!)
+    var scripts = this.spriteNamed(name).scripts;
+    // scripts.unflash();
+    // scripts.flashCodeIdx(charIdx, contents);
+    scripts.balloonCodeIdx(charIdx, contents);
+};
+
+IDE_Morph.prototype.closePopUps = function () {
+    // remove all pop-up menus and balloons, if any
+    this.world().hand.destroyTemporaries();
 };
 
 IDE_Morph.prototype.unsavedChanges = function () {

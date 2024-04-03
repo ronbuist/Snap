@@ -2,6 +2,76 @@
 
 ## in development:
 
+## 9.2.13:
+    * fixed "my solutions" reporter for puzzle scripts without comments
+
+2024-03-24
+* threaes: fixed "my solutions" reporter for puzzle scripts without comments
+* prepared v9.2.13 patch
+
+## 9.2.12:
+    * fixed right-click deletion of reporters embedded in variadic slots
+
+2024-03-18
+* blocks: fixed right-click deletion of reporters embedded in variadic slots
+* prepared v9.2.12 patch
+
+## 9.2.11:
+    * fixed #3329
+
+2024-03-16
+* blocks: fixed #3329
+* prepared v9.2.11 patch
+
+## 9.2.10:
+    * fixed #3322
+
+2024-03-01
+* morphic: fixed #3322
+* prepared v9.2.10 patch
+
+## 9.2.9:
+* **New Features:**
+    * new "preserveTitle" API configuration, thanks, Bernat!
+    * new "hideProjects" API configuration switch, hides / shows the project menu button in the tool bar
+    * new "hideSettings" API configuration switch, hides / shows the project menu button in the tool bar
+* **Notable Fixes:**
+    * hide the cloud menu button when the "noCloud" API configuration is switched on
+    * hide the project menu button when the "noImports" API configuration is switched on
+
+2024-02-23
+* gui: make sure to hide the cloud menu button when "noCloud" API configuration is switched on
+* gui: hide the project menu when "noImports" API configuration is switched on
+* new: new "hideProjects" API configuration switch, hides / shows the project menu button in the tool bar
+* new: new "hideSettings" API configuration switch, hides / shows the settings menu button in the tool bar
+* prepared v9.2.9 patch
+
+2024-02-22
+* new dev version for v9.2.9
+
+## 9.2.8:
+* **Notable Fixes:**
+    * fixed a codification bug for strings beginning with a number, thanks, @schanzer, for the report!
+
+2024-02-20
+* blocks: fixed a codification bug for strings beginning with a number, thanks, Emmanuel, for the report!
+* prepared v9.2.8 patch
+
+## 9.2.7:
+* **New Features:**
+    * new "Lirin" costume series, thanks, Meghan and Brian!
+    * new showScriptBalloonAt() and closePopUps() API methods
+    * new flashSpriteScriptOutlineAt() and unflashSpriteScriptsOutline() API methods
+* **Documentation Updates:**
+    * extended API documentation for flashing block outlines and displaying annotations in speech balloons
+
+2024-02-20
+* new dev version for v9.2.7
+* added new Lirin costumes, thanks, Brian and Meghan!
+* api: added showScriptBalloonAt() and closePopUps() API methods
+* api: added flashSpriteScriptOutlineAt() and unflashSpriteScriptsOutline() API methods 
+* prepared v9.2.7 patch
+
 ## 9.2.6:
 * **Notable Changes:**
     * allow-listed birdbrain tech for extensions
