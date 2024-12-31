@@ -49,6 +49,7 @@
             (f) resize event
             (g) combined mouse-keyboard events
             (h) text editing events
+            (i) indicating unsaved changes
         (4) stepping
         (5) creating new kinds of morphs
             (a) drawing the shape
@@ -856,6 +857,19 @@
     single-line text elements can hold them apart.
 
 
+    (i) indicating unsaved changes
+    ------------------------------
+    Before closing a browser tab with a Morphic world any top level morph
+    can signal unsaved changes by implementing a
+    
+        hasUnsavedChanges()
+    
+    method, which returns a Boolean value indicating whether it is safe to
+    destroy. If any top level morph indicates unsaved changes the browser
+    pops up a dialog box warning about unsaved changes and prompting for user
+    confirmation to close it.
+
+
     (4) stepping
     ------------
     Stepping is what makes Morphic "magical". Two properties control
@@ -1228,6 +1242,24 @@
 
     are implemented.
 
+    Animations can also be used to schedule a function execution just once
+    in lockstep with the Morphic scheduler, avoiding the setTimeout() pattern.
+    A syntactic shortcut for single-time scheduling exists in the WorldMorph's
+
+        schedule()
+
+    method.
+
+    For usage examples look at how TriggerMorph implements
+
+        bubbleHelp()
+
+    or at MenuItemMorph's
+
+        delaySubmenu()
+
+    method.
+
 
     (10) minifying morphic.js
     -------------------------
@@ -1306,7 +1338,7 @@
 
 /*jshint esversion: 11, bitwise: false*/
 
-var morphicVersion = '2024-March-01';
+var morphicVersion = '2024-October-09';
 var modules = {}; // keep track of additional loaded modules
 var useBlurredShadows = true;
 
@@ -1617,7 +1649,7 @@ function embedMetadataPNG(aCanvas, aString) {
             embedTag
         );
     try {
-        bPart.splice(-12, 0, ...newChunk);
+        bPart = bPart.slice(0, -12).concat( newChunk.split(""), bPart.slice( -12));
         parts[1] = btoa(bPart.join(""));
     } catch (err) {
         console.log(err);
@@ -3086,6 +3118,16 @@ Node.prototype.allChildren = function () {
     var result = [this];
     this.children.forEach(child => {
         result = result.concat(child.allChildren());
+    });
+    return result;
+};
+
+Node.prototype.allChildrenExcept = function (callback) {
+    // includes myself, stops at nodes that satisfy the callback predicate
+    var result = [this];
+    if (callback(this)) {return []; }
+    this.children.forEach(child => {
+        result = result.concat(child.allChildrenExcept(callback));
     });
     return result;
 };
@@ -10037,16 +10079,10 @@ TriggerMorph.prototype.rootForGrab = function () {
 // TriggerMorph bubble help:
 
 TriggerMorph.prototype.bubbleHelp = function (contents) {
-    var world = this.world();
-    this.schedule = new Animation(
-        nop,
-        nop,
-        0,
-        500,
-        nop,
-        () => this.popUpbubbleHelp(contents)
+    this.schedule = this.world().schedule(
+        () => this.popUpbubbleHelp(contents),
+        500
     );
-    world.animations.push(this.schedule);
 };
 
 TriggerMorph.prototype.popUpbubbleHelp = function (contents) {
@@ -10279,16 +10315,10 @@ MenuItemMorph.prototype.isShowingSubmenu = function () {
 // MenuItemMorph submenus:
 
 MenuItemMorph.prototype.delaySubmenu = function () {
-    var world = this.world();
-    this.schedule = new Animation(
-        nop,
-        nop,
-        0,
-        500,
-        nop,
-        () => this.popUpSubmenu()
+    this.schedule = this.world().schedule(
+        () => this.popUpSubmenu(),
+        500
     );
-    world.animations.push(this.schedule);
 };
 
 MenuItemMorph.prototype.popUpSubmenu = function () {
@@ -12226,6 +12256,25 @@ WorldMorph.prototype.initRetina = function () {
     this.setHeight(canvasHeight);
 };
 
+// WorldMorph scheduling:
+
+WorldMorph.prototype.schedule = function (callback, timeout) {
+    // run a function once after a given time in msecs in lockstep
+    // with the Morphic scheduler, answer an Animation object
+    // if timeout is omitted the callback is executed at the next
+    // display cycle
+    var schedule = new Animation(
+        nop, // setter
+        nop, // getter
+        0, // delta
+        timeout || 0, // duration msecs
+        nop, // easing
+        callback || nop // onComplete
+    );
+    this.animations.push(schedule);
+    return schedule;
+};
+
 // WorldMorph global pixel access:
 
 WorldMorph.prototype.getGlobalPixelColor = function (point) {
@@ -12472,7 +12521,8 @@ WorldMorph.prototype.initEventListeners = function () {
     );
 
     window.cachedOnbeforeunload = window.onbeforeunload;
-    window.onbeforeunload = (evt) => {
+    this.onbeforeunloadListener = (evt) => {
+        if (!this.hasUnsavedEdits()) return;
         if (window.cachedOnbeforeunload) {
             window.cachedOnbeforeunload.call(null, evt);
         }
@@ -12485,6 +12535,14 @@ WorldMorph.prototype.initEventListeners = function () {
         // For Safari / chrome
         return msg;
     };
+     window.addEventListener("beforeunload", this.onbeforeunloadListener);
+};
+
+WorldMorph.prototype.hasUnsavedEdits = function () {
+    // any top-level morph can implement an hasUnsavedEdits() method
+    return this.children.some(any =>
+        any.hasUnsavedEdits && any.hasUnsavedEdits()
+    );
 };
 
 WorldMorph.prototype.mouseDownLeft = nop;
@@ -12931,4 +12989,9 @@ WorldMorph.prototype.togglePreferences = function () {
 WorldMorph.prototype.toggleHolesDisplay = function () {
     MorphicPreferences.showHoles = !MorphicPreferences.showHoles;
     this.rerender();
+};
+
+WorldMorph.prototype.destroy = function () {
+    window.removeEventListener("onbeforeunload", this.onbeforeunloadListener);
+    WorldMorph.uber.destroy.call(this);
 };

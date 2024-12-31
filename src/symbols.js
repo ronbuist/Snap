@@ -41,7 +41,7 @@
 
 // Global stuff ////////////////////////////////////////////////////////
 
-modules.symbols = '2024-January-18';
+modules.symbols = '2024-November-24';
 
 var SymbolMorph;
 
@@ -148,7 +148,10 @@ SymbolMorph.prototype.names = [
     'flipVertical',
     'flipHorizontal',
     'trash',
-    'trashFull'
+    'trashFull',
+    'cube',
+    'cubeSolid',
+    'infinity'
 ];
 
 // SymbolMorph instance creation:
@@ -501,6 +504,15 @@ SymbolMorph.prototype.renderShape = function (ctx, aColor) {
     case 'trashFull':
         this.renderSymbolTrashFull(ctx, aColor);
         break;
+    case 'cube':
+        this.renderSymbolCube(ctx, aColor);
+        break;
+    case 'cubeSolid':
+        this.renderSymbolCubeSolid(ctx, aColor);
+        break;
+    case 'infinity':
+        this.renderSymbolInfinity(ctx, aColor);
+        break;
     default:
         throw new Error('unknown symbol name: "' + this.name + '"');
     }
@@ -540,6 +552,8 @@ SymbolMorph.prototype.symbolWidth = function () {
     case 'keyboard':
     case 'keyboardFilled':
         return size * 1.6;
+    case 'infinity':
+        return size * 1.75;
     case 'turnRight':
     case 'turnLeft':
         return size / 3 * 2;
@@ -2418,6 +2432,77 @@ SymbolMorph.prototype.renderSymbolTrashFull = function (ctx, color) {
     ctx.lineTo(step * 6, step * 2);
     ctx.closePath();
     ctx.fill();
+};
+
+SymbolMorph.prototype.renderSymbolCube = function (ctx, color) {
+    // draw a hexagon
+    var side = this.symbolWidth(),
+        half = side / 2,
+        quarter = side / 4,
+        l = Math.max(side / 20, 0.5);
+
+    // draw the outer hexagon
+    ctx.strokeStyle = color.toString();
+    ctx.lineWidth = l * 2;
+    ctx.beginPath();
+    ctx.moveTo(l, quarter);
+    ctx.lineTo(half, l);
+    ctx.lineTo(side - l, quarter);
+    ctx.lineTo(side - l, side - quarter);
+    ctx.lineTo(half, side - l);
+    ctx.lineTo(l, side-quarter);
+    ctx.closePath();
+    ctx.stroke();
+
+    // draw the inner edges
+    ctx.beginPath();
+    ctx.moveTo(half, half - l);
+    ctx.lineTo(l, quarter);
+    ctx.moveTo(half, half - l);
+    ctx.lineTo(side - l, quarter);
+    ctx.moveTo(half, half - l);
+    ctx.lineTo(half, side - l);
+    ctx.stroke();
+};
+
+SymbolMorph.prototype.renderSymbolCubeSolid = function (ctx, color) {
+    // draw a hexagon
+    var side = this.symbolWidth(),
+        half = side / 2,
+        quarter = side / 4,
+        l = Math.max(side / 20, 0.5);
+
+    // draw the outline
+    this.renderSymbolCube(ctx, color);
+
+    // fill the bottom right square
+    ctx.fillStyle = color.toString();
+    ctx.beginPath();
+    ctx.moveTo(half, half - l);
+    ctx.lineTo(side - l, quarter);
+    ctx.lineTo(side - l, side - quarter);
+    ctx.lineTo(half, side - l);
+    ctx.closePath();
+    ctx.fill();
+};
+
+SymbolMorph.prototype.renderSymbolInfinity = function (ctx, color) {
+    var h = this.size,
+        l = Math.max(h / 4, 1),
+        r = h / 2;
+
+    ctx.lineWidth = l;
+    ctx.strokeStyle = color.toString();
+
+    // left arc
+    ctx.beginPath();
+    ctx.arc(r, r, r - l / 2, radians(60), radians(360), false);
+    ctx.stroke();
+
+    // right arc
+    ctx.beginPath();
+    ctx.arc(r * 3 - l, r, r - l / 2, radians(-120), radians(180), false);
+    ctx.stroke();
 };
 
 /*
